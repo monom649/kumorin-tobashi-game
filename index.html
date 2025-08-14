@@ -295,6 +295,7 @@
                 <div id="debugInfo">
                     <div>ジャイロ: <span id="gyroStatus">未取得</span></div>
                     <div>Alpha: <span id="alphaValue">0</span>°</div>
+                    <div>Beta: <span id="betaValue">0</span>°</div>
                     <div>Gamma: <span id="gammaValue">0</span>°</div>
                     <div>操作: <span id="controlStatus">待機中</span></div>
                 </div>
@@ -485,6 +486,7 @@
                 if (this.debugMode) {
                     document.getElementById('gyroStatus').textContent = 'アクティブ';
                     document.getElementById('alphaValue').textContent = this.gyroData.alpha;
+                    document.getElementById('betaValue').textContent = this.gyroData.beta;
                     document.getElementById('gammaValue').textContent = this.gyroData.gamma;
                 }
             }
@@ -494,19 +496,35 @@
                 console.log('タッチ操作設定中...');
                 this.touchControls = true;
                 
-                // 画面左右タップで操作
+                // 画面4方向タップで操作
                 const canvas = this.canvas;
                 canvas.addEventListener('touchstart', (e) => {
                     e.preventDefault();
                     const touch = e.touches[0];
                     const rect = canvas.getBoundingClientRect();
                     const x = touch.clientX - rect.left;
+                    const y = touch.clientY - rect.top;
                     const centerX = rect.width / 2;
+                    const centerY = rect.height / 2;
                     
-                    if (x < centerX) {
-                        this.touchDirection = 'left';
+                    // 中央からの距離で方向決定
+                    const deltaX = x - centerX;
+                    const deltaY = y - centerY;
+                    
+                    if (Math.abs(deltaX) > Math.abs(deltaY)) {
+                        // 左右方向
+                        if (deltaX < 0) {
+                            this.touchDirection = 'left';
+                        } else {
+                            this.touchDirection = 'right';
+                        }
                     } else {
-                        this.touchDirection = 'right';
+                        // 上下方向
+                        if (deltaY < 0) {
+                            this.touchDirection = 'up';
+                        } else {
+                            this.touchDirection = 'down';
+                        }
                     }
                 });
                 
@@ -667,33 +685,38 @@
                 const moveSpeed = 8;
                 let shouldMoveLeft = false;
                 let shouldMoveRight = false;
+                let shouldMoveUp = false;
+                let shouldMoveDown = false;
                 
-                // タッチ操作の確認
+                // タッチ操作の確認（4方向対応）
                 if (this.touchControls && this.touchDirection) {
                     shouldMoveLeft = this.touchDirection === 'left';
                     shouldMoveRight = this.touchDirection === 'right';
+                    shouldMoveUp = this.touchDirection === 'up';
+                    shouldMoveDown = this.touchDirection === 'down';
                     
                     if (this.debugMode) {
                         document.getElementById('controlStatus').textContent = `タッチ: ${this.touchDirection}`;
                     }
                 }
-                // ジャイロセンサーの確認
+                // ジャイロセンサーの確認（4方向対応）
                 else if (this.gyroData) {
                     const alpha = this.gyroData.alpha || 0;
+                    const beta = this.gyroData.beta || 0;
                     const gamma = this.gyroData.gamma || 0;
                     
-                    // 仕様書通りのAlpha値での判定
-                    if (alpha > 40 && alpha < 60) {
+                    // 左右移動（Gamma値: 左右の傾き）
+                    if (gamma < -15) {
                         shouldMoveLeft = true;
-                    } else if (alpha > 300 && alpha < 320) {
+                    } else if (gamma > 15) {
                         shouldMoveRight = true;
                     }
                     
-                    // Gamma値での判定も追加（より使いやすく）
-                    if (gamma < -20) {
-                        shouldMoveLeft = true;
-                    } else if (gamma > 20) {
-                        shouldMoveRight = true;
+                    // 上下移動（Beta値: 前後の傾き）
+                    if (beta < -15) {
+                        shouldMoveUp = true;
+                    } else if (beta > 15) {
+                        shouldMoveDown = true;
                     }
                     
                     // デバッグ表示
@@ -701,9 +724,18 @@
                         let status = '待機中';
                         if (shouldMoveLeft) status = '← 左移動';
                         if (shouldMoveRight) status = '→ 右移動';
+                        if (shouldMoveUp) status = '↑ 上移動';
+                        if (shouldMoveDown) status = '↓ 下移動';
+                        
+                        // 複数方向の場合
+                        if ((shouldMoveLeft || shouldMoveRight) && (shouldMoveUp || shouldMoveDown)) {
+                            const horizontal = shouldMoveLeft ? '←' : '→';
+                            const vertical = shouldMoveUp ? '↑' : '↓';
+                            status = `${horizontal}${vertical} 斜め移動`;
+                        }
                         
                         document.getElementById('controlStatus').textContent = 
-                            `${status} (A:${alpha}, G:${gamma})`;
+                            `${status} (A:${alpha}, B:${beta}, G:${gamma})`;
                     }
                 }
                 
@@ -714,11 +746,23 @@
                 if (shouldMoveRight) {
                     this.player.x += moveSpeed;
                 }
+                if (shouldMoveUp) {
+                    this.player.y -= moveSpeed;
+                }
+                if (shouldMoveDown) {
+                    this.player.y += moveSpeed;
+                }
                 
-                // 画面内制限
+                // 画面内制限（左右）
                 if (this.player.x < 50) this.player.x = 50;
                 if (this.player.x > 1080 - this.player.width - 50) {
                     this.player.x = 1080 - this.player.width - 50; // 1080 - 300 - 50 = 730
+                }
+                
+                // 画面内制限（上下）
+                if (this.player.y < 200) this.player.y = 200; // 上端制限
+                if (this.player.y > 1920 - this.player.height - 100) {
+                    this.player.y = 1920 - this.player.height - 100; // 下端制限
                 }
                 
                 // HTML要素の位置更新
