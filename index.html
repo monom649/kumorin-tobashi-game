@@ -822,26 +822,26 @@
                     });
                 }
                 
-                // 渡り鳥のみの生成（1体ずつなので頻度を大幅上昇）
+                // 渡り鳥のみの生成（初期頻度を下げてバランス調整）
                 const distanceCheck = Math.floor(this.distance / 100);
                 
-                // 1体ずつなので頻度を大幅に上げて適切な難易度を維持
-                let obstacleChance = 0.025; // 基本2.5%
+                // 初期は低頻度から始まり、緩やかに上昇
+                let obstacleChance = 0.008; // 基本0.8%（大幅減）
                 
                 if (this.distance >= 1000) {
-                    obstacleChance = 0.035; // 1000m以降: 3.5%
+                    obstacleChance = 0.012; // 1000m以降: 1.2%
                 }
                 if (this.distance >= 3000) {
-                    obstacleChance = 0.045; // 3000m以降: 4.5%
+                    obstacleChance = 0.018; // 3000m以降: 1.8%
                 }
                 if (this.distance >= 5000) {
-                    obstacleChance = 0.055; // 5000m以降: 5.5%
+                    obstacleChance = 0.025; // 5000m以降: 2.5%
                 }
                 if (this.distance >= 8000) {
-                    obstacleChance = 0.065; // 8000m以降: 6.5%
+                    obstacleChance = 0.035; // 8000m以降: 3.5%
                 }
                 if (this.distance >= 12000) {
-                    obstacleChance = 0.075; // 12000m以降: 7.5%
+                    obstacleChance = 0.045; // 12000m以降: 4.5%
                 }
                 
                 // デバッグログ（低頻度）
@@ -856,13 +856,13 @@
                     const startX = direction === 'left' ? -200 : 1080;
                     const y = Math.random() * (1920 - 400) + 200; // 画面全体に出現（上下200pxマージン）
                     
-                    // 鳥の速度を距離に応じて調整
-                    let birdSpeed = 8; // 基本速度
+                    // 鳥の速度を距離に応じて調整（60%に減速）
+                    let birdSpeed = 5; // 基本速度（8の60% = 4.8 → 5）
                     if (this.distance >= 5000) {
-                        birdSpeed = 10; // 5000m以降は速く
+                        birdSpeed = 6; // 5000m以降（10の60% = 6）
                     }
                     if (this.distance >= 10000) {
-                        birdSpeed = 12; // 10000m以降はさらに速く
+                        birdSpeed = 7; // 10000m以降（12の60% = 7.2 → 7）
                     }
                     
                     this.obstacles.push({
