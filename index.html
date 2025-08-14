@@ -153,6 +153,19 @@
             gap: 10px;
         }
 
+        #debugInfo {
+            position: absolute;
+            top: 100px;
+            left: 20px;
+            color: white;
+            font-size: 14px;
+            background: rgba(0,0,0,0.7);
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            display: none;
+        }
+
         .banana-icon {
             width: 40px;
             height: 40px;
@@ -233,6 +246,12 @@
         <div id="gameUI">
             <div id="distanceDisplay">0m</div>
             <div id="bananaCounter"></div>
+            <div id="debugInfo">
+                <div>ジャイロ: <span id="gyroStatus">未取得</span></div>
+                <div>Alpha: <span id="alphaValue">0</span>°</div>
+                <div>Gamma: <span id="gammaValue">0</span>°</div>
+                <div>操作: <span id="controlStatus">待機中</span></div>
+            </div>
         </div>
     </div>
 
@@ -276,6 +295,12 @@
                 // ジャイロセンサー
                 this.gyroData = { alpha: 0 };
                 
+                // デバッグモード（開発用）
+                this.debugMode = window.location.search.includes('debug=true');
+                if (this.debugMode) {
+                    document.getElementById('debugInfo').style.display = 'block';
+                }
+                
                 this.setupEventListeners();
                 this.loadAssets();
                 this.loadAudio();
@@ -315,28 +340,72 @@
 
             async requestGyroPermission() {
                 try {
-                    if (typeof DeviceMotionEvent.requestPermission === 'function') {
-                        const response = await DeviceMotionEvent.requestPermission();
+                    // iOS 13+ の場合
+                    if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+                        console.log('iOS デバイス検出 - 許可を要求中...');
+                        const response = await DeviceOrientationEvent.requestPermission();
+                        console.log('許可結果:', response);
+                        
                         if (response === 'granted') {
                             this.setupGyro();
                             this.startIntro();
                         } else {
-                            alert('ジャイロセンサーの許可が必要です');
+                            alert('ジャイロセンサーの許可が必要です。設定からアクセス許可を有効にしてください。');
+                            this.startIntro(); // 許可されなくてもゲーム開始
                         }
                     } else {
-                        // Android等
+                        // Android等の場合
+                        console.log('Android または古いデバイス検出');
                         this.setupGyro();
                         this.startIntro();
                     }
                 } catch (error) {
                     console.error('ジャイロセンサーエラー:', error);
-                    this.startIntro(); // ジャイロなしでも開始
+                    alert('ジャイロセンサーの設定に問題があります。タップ操作でプレイできます。');
+                    this.setupTouchControls(); // タッチ操作を代替設定
+                    this.startIntro();
                 }
             }
 
             setupGyro() {
                 window.addEventListener('deviceorientation', (event) => {
                     this.gyroData.alpha = event.alpha || 0;
+                    this.gyroData.beta = event.beta || 0;
+                    this.gyroData.gamma = event.gamma || 0;
+                    
+                    // デバッグUI更新
+                    if (this.debugMode) {
+                        document.getElementById('gyroStatus').textContent = 'アクティブ';
+                        document.getElementById('alphaValue').textContent = this.gyroData.alpha?.toFixed(1) || '0';
+                        document.getElementById('gammaValue').textContent = this.gyroData.gamma?.toFixed(1) || '0';
+                    }
+                });
+                
+                console.log('ジャイロセンサー設定完了');
+            }
+
+            // タッチ操作の代替設定
+            setupTouchControls() {
+                console.log('タッチ操作設定中...');
+                this.touchControls = true;
+                
+                // 画面左右タップで操作
+                const canvas = this.canvas;
+                canvas.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    const touch = e.touches[0];
+                    const centerX = canvas.width / 2;
+                    
+                    if (touch.clientX < centerX) {
+                        this.touchDirection = 'left';
+                    } else {
+                        this.touchDirection = 'right';
+                    }
+                });
+                
+                canvas.addEventListener('touchend', (e) => {
+                    e.preventDefault();
+                    this.touchDirection = null;
                 });
             }
 
@@ -487,15 +556,48 @@
             }
 
             updatePlayerMovement() {
-                const alpha = this.gyroData.alpha;
                 const moveSpeed = 8;
+                let shouldMoveLeft = false;
+                let shouldMoveRight = false;
                 
-                // 左移動: Alpha > 40° && < 60°
-                if (alpha > 40 && alpha < 60) {
+                // タッチ操作の確認
+                if (this.touchControls && this.touchDirection) {
+                    shouldMoveLeft = this.touchDirection === 'left';
+                    shouldMoveRight = this.touchDirection === 'right';
+                    console.log('タッチ操作:', this.touchDirection);
+                }
+                // ジャイロセンサーの確認
+                else if (this.gyroData.alpha !== undefined) {
+                    const alpha = this.gyroData.alpha;
+                    const gamma = this.gyroData.gamma || 0;
+                    
+                    // 複数の角度パターンで判定
+                    // 方法1: Alpha値での判定（仕様書通り）
+                    if (alpha > 40 && alpha < 60) {
+                        shouldMoveLeft = true;
+                    } else if (alpha > 300 && alpha < 320) {
+                        shouldMoveRight = true;
+                    }
+                    
+                    // 方法2: Gamma値での判定（左右の傾き）
+                    if (gamma < -15) {
+                        shouldMoveLeft = true;
+                    } else if (gamma > 15) {
+                        shouldMoveRight = true;
+                    }
+                    
+                    // デバッグ表示
+                    if (this.debugMode) {
+                        const status = shouldMoveLeft ? '← 左移動' : shouldMoveRight ? '→ 右移動' : '待機中';
+                        document.getElementById('controlStatus').textContent = status;
+                    }
+                }
+                
+                // 移動実行
+                if (shouldMoveLeft) {
                     this.player.x -= moveSpeed;
                 }
-                // 右移動: Alpha > 300° && < 320°
-                else if (alpha > 300 && alpha < 320) {
+                if (shouldMoveRight) {
                     this.player.x += moveSpeed;
                 }
                 
