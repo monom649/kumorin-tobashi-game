@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>くもりんとばし</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            background: #000;
+            overflow: hidden;
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        /* 縦向き固定 */
+        @media screen and (orientation: landscape) {
+            body::before {
+                content: '画面を縦向きにしてください';
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                color: white;
+                font-size: 24px;
+                z-index: 9999;
+                background: rgba(0,0,0,0.8);
+                padding: 20px;
+                border-radius: 10px;
+            }
+        }
+
+        /* タイトル画面 */
+        #titleScreen {
+            width: 100vw;
+            height: 100vh;
+            background-image: url('https://imgur.com/yuOkMHz.jpg');
+            background-size: cover;
+            background-position: center;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        #kumorinGif {
+            width: 500px;
+            height: 500px;
+            background-image: url('https://imgur.com/a/dLPGHNh.gif');
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+
+        #startButton {
+            margin-top: 20px;
+            padding: 20px 40px;
+            font-size: 24px;
+            background: #ff6b00;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+
+        #startButton:hover {
+            background: #e55a00;
+        }
+
+        /* 導入演出画面 */
+        #introScreen {
+            display: none;
+            width: 100vw;
+            height: 100vh;
+            background: linear-gradient(to bottom, #87CEEB, #98FB98);
+            position: relative;
+            overflow: hidden;
+        }
+
+        #kumorinIntro {
+            position: absolute;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 300px;
+            height: 300px;
+            background-image: url('https://imgur.com/a/dLPGHNh.gif');
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+
+        #sodaOjisan {
+            position: absolute;
+            bottom: -400px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 300px;
+            height: 300px;
+            background-image: url('https://imgur.com/4aHLhwq.jpg');
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+
+        /* ゲーム画面 */
+        #gameScreen {
+            display: none;
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+
+        #gameCanvas {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to bottom, #87CEEB, #98FB98);
+            display: block;
+        }
+
+        /* UI要素 */
+        #gameUI {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        #distanceDisplay {
+            position: absolute;
+            top: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 48px;
+            font-weight: bold;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+
+        #bananaCounter {
+            position: absolute;
+            top: 50px;
+            right: 50px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .banana-icon {
+            width: 40px;
+            height: 40px;
+            background-image: url('https://imgur.com/n4B27qz.jpg');
+            background-size: contain;
+            background-repeat: no-repeat;
+        }
+
+        /* ゲームオーバー画面 */
+        #gameOverScreen {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 20;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            color: white;
+        }
+
+        #finalDistance {
+            font-size: 72px;
+            font-weight: bold;
+            margin: 20px 0;
+        }
+
+        .button {
+            margin: 10px;
+            padding: 15px 30px;
+            font-size: 20px;
+            background: #ff6b00;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        /* アニメーション定義 */
+        @keyframes slideUp {
+            from { transform: translateX(-50%) translateY(100vh); }
+            to { transform: translateX(-50%) translateY(-100px); }
+        }
+
+        @keyframes flyUp {
+            from { transform: translateX(-50%) translateY(0); }
+            to { transform: translateX(-50%) translateY(-100vh); }
+        }
+
+        .soda-entrance {
+            animation: slideUp 1s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+        }
+
+        .kumorin-flyout {
+            animation: flyUp 1s ease-out forwards;
+        }
+    </style>
+</head>
+<body>
+    <!-- タイトル画面 -->
+    <div id="titleScreen">
+        <div id="kumorinGif"></div>
+        <button id="startButton">スタート</button>
+    </div>
+
+    <!-- 導入演出画面 -->
+    <div id="introScreen">
+        <div id="kumorinIntro"></div>
+        <div id="sodaOjisan"></div>
+    </div>
+
+    <!-- ゲーム画面 -->
+    <div id="gameScreen">
+        <canvas id="gameCanvas"></canvas>
+        <div id="gameUI">
+            <div id="distanceDisplay">0m</div>
+            <div id="bananaCounter"></div>
+        </div>
+    </div>
+
+    <!-- ゲームオーバー画面 -->
+    <div id="gameOverScreen">
+        <h1>ゲームオーバー</h1>
+        <div id="finalDistance">0m</div>
+        <button class="button" id="retryButton">もう一度プレイ</button>
+        <button class="button" id="shareButton">結果をシェア</button>
+        <button class="button" id="titleButton">タイトルに戻る</button>
+    </div>
+
+    <script>
+        // ゲームの基本設定
+        class KumorinGame {
+            constructor() {
+                this.canvas = document.getElementById('gameCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.setupCanvas();
+                
+                // ゲーム状態
+                this.gameState = 'title'; // 'title', 'intro', 'playing', 'gameOver'
+                this.distance = 0;
+                this.bananaCount = 0;
+                this.speedMultiplier = 1.0;
+                
+                // プレイヤー（くもりん）
+                this.player = {
+                    x: 0,
+                    y: 0,
+                    width: 300,
+                    height: 300,
+                    img: new Image()
+                };
+                
+                // 障害物配列
+                this.obstacles = [];
+                this.clouds = [];
+                this.bananas = [];
+                
+                // ジャイロセンサー
+                this.gyroData = { alpha: 0 };
+                
+                this.setupEventListeners();
+                this.loadAssets();
+            }
+
+            setupCanvas() {
+                this.canvas.width = window.innerWidth;
+                this.canvas.height = window.innerHeight;
+            }
+
+            setupEventListeners() {
+                // スタートボタン
+                document.getElementById('startButton').addEventListener('click', () => {
+                    this.requestGyroPermission();
+                });
+
+                // リトライボタン
+                document.getElementById('retryButton').addEventListener('click', () => {
+                    this.startGame();
+                });
+
+                // シェアボタン
+                document.getElementById('shareButton').addEventListener('click', () => {
+                    this.shareScore();
+                });
+
+                // タイトルボタン
+                document.getElementById('titleButton').addEventListener('click', () => {
+                    this.showTitleScreen();
+                });
+
+                // 画面リサイズ対応
+                window.addEventListener('resize', () => {
+                    this.setupCanvas();
+                });
+            }
+
+            async requestGyroPermission() {
+                try {
+                    if (typeof DeviceMotionEvent.requestPermission === 'function') {
+                        const response = await DeviceMotionEvent.requestPermission();
+                        if (response === 'granted') {
+                            this.setupGyro();
+                            this.startIntro();
+                        } else {
+                            alert('ジャイロセンサーの許可が必要です');
+                        }
+                    } else {
+                        // Android等
+                        this.setupGyro();
+                        this.startIntro();
+                    }
+                } catch (error) {
+                    console.error('ジャイロセンサーエラー:', error);
+                    this.startIntro(); // ジャイロなしでも開始
+                }
+            }
+
+            setupGyro() {
+                window.addEventListener('deviceorientation', (event) => {
+                    this.gyroData.alpha = event.alpha || 0;
+                });
+            }
+
+            loadAssets() {
+                // 画像の読み込み
+                this.player.img.src = 'https://imgur.com/a/dLPGHNh.gif';
+                
+                // 他のアセットも同様に読み込み
+                this.assets = {
+                    crow: new Image(),
+                    bird: new Image(),
+                    banana: new Image(),
+                    cloud1: new Image(),
+                    cloud2: new Image()
+                };
+                
+                this.assets.crow.src = 'https://imgur.com/TdVc7OM.jpg';
+                this.assets.bird.src = 'https://imgur.com/gOrPr79.jpg';
+                this.assets.banana.src = 'https://imgur.com/n4B27qz.jpg';
+                this.assets.cloud1.src = 'https://imgur.com/qY1JVuT.jpg';
+                this.assets.cloud2.src = 'https://imgur.com/0ybVRKX.jpg';
+            }
+
+            startIntro() {
+                document.getElementById('titleScreen').style.display = 'none';
+                document.getElementById('introScreen').style.display = 'block';
+                
+                // 1秒後にソーダおじさん登場
+                setTimeout(() => {
+                    const soda = document.getElementById('sodaOjisan');
+                    soda.classList.add('soda-entrance');
+                    
+                    // 1秒後にくもりん飛び出し
+                    setTimeout(() => {
+                        const kumorin = document.getElementById('kumorinIntro');
+                        kumorin.classList.add('kumorin-flyout');
+                        
+                        // 1秒後にゲーム開始
+                        setTimeout(() => {
+                            this.startGame();
+                        }, 1000);
+                    }, 1000);
+                }, 1000);
+            }
+
+            startGame() {
+                document.getElementById('introScreen').style.display = 'none';
+                document.getElementById('gameScreen').style.display = 'block';
+                document.getElementById('gameOverScreen').style.display = 'none';
+                
+                this.gameState = 'playing';
+                this.distance = 0;
+                this.bananaCount = 0;
+                this.speedMultiplier = 1.0;
+                
+                // プレイヤー初期位置
+                this.player.x = this.canvas.width / 2 - this.player.width / 2;
+                this.player.y = this.canvas.height - this.player.height - 100;
+                
+                // 配列クリア
+                this.obstacles = [];
+                this.clouds = [];
+                this.bananas = [];
+                
+                this.gameLoop();
+            }
+
+            gameLoop() {
+                if (this.gameState !== 'playing') return;
+                
+                this.update();
+                this.draw();
+                
+                setTimeout(() => {
+                    this.gameLoop();
+                }, 33); // 30FPS
+            }
+
+            update() {
+                // プレイヤー移動（ジャイロ）
+                this.updatePlayerMovement();
+                
+                // 距離更新
+                this.distance += this.speedMultiplier * 3.33; // 30秒で100m
+                document.getElementById('distanceDisplay').textContent = Math.floor(this.distance) + 'm';
+                
+                // 障害物・アイテム生成
+                this.spawnObjects();
+                
+                // オブジェクト更新
+                this.updateObjects();
+                
+                // 衝突判定
+                this.checkCollisions();
+                
+                // バナナカウンター更新
+                this.updateBananaCounter();
+            }
+
+            updatePlayerMovement() {
+                const alpha = this.gyroData.alpha;
+                const moveSpeed = 8;
+                
+                // 左移動: Alpha > 40° && < 60°
+                if (alpha > 40 && alpha < 60) {
+                    this.player.x -= moveSpeed;
+                }
+                // 右移動: Alpha > 300° && < 320°
+                else if (alpha > 300 && alpha < 320) {
+                    this.player.x += moveSpeed;
+                }
+                
+                // 画面内制限
+                if (this.player.x < 50) this.player.x = 50;
+                if (this.player.x > this.canvas.width - this.player.width - 50) {
+                    this.player.x = this.canvas.width - this.player.width - 50;
+                }
+            }
+
+            spawnObjects() {
+                // 雲の生成
+                if (Math.random() < 0.1) {
+                    this.clouds.push({
+                        x: Math.random() * this.canvas.width,
+                        y: -200,
+                        type: Math.random() < 0.5 ? 'cloud1' : 'cloud2',
+                        speed: 5 * this.speedMultiplier
+                    });
+                }
+                
+                // 障害物生成（50mごとに判定）
+                const distanceCheck = Math.floor(this.distance / 50);
+                const baseChance = Math.min(0.6, 0.5 + (distanceCheck * 0.05));
+                
+                if (Math.random() < baseChance / 100) {
+                    if (Math.random() < 0.5) {
+                        // カラス
+                        this.obstacles.push({
+                            x: Math.random() * (this.canvas.width - 300),
+                            y: -300,
+                            width: 300,
+                            height: 300,
+                            type: 'crow',
+                            speed: 3 * this.speedMultiplier
+                        });
+                    } else {
+                        // 渡り鳥（3匹1列）
+                        const direction = Math.random() < 0.5 ? 'left' : 'right';
+                        const startX = direction === 'left' ? -900 : this.canvas.width;
+                        const y = Math.random() * (this.canvas.height / 2);
+                        
+                        for (let i = 0; i < 3; i++) {
+                            this.obstacles.push({
+                                x: startX + (i * 350),
+                                y: y,
+                                width: 300,
+                                height: 300,
+                                type: 'bird',
+                                direction: direction,
+                                speed: 11 * this.speedMultiplier
+                            });
+                        }
+                    }
+                }
+                
+                // バナナ生成（100mごとに40%の確率）
+                if (Math.floor(this.distance) % 100 === 0 && Math.random() < 0.4) {
+                    this.bananas.push({
+                        x: Math.random() * (this.canvas.width - 300),
+                        y: -300,
+                        width: 300,
+                        height: 300,
+                        speed: 3 * this.speedMultiplier
+                    });
+                }
+            }
+
+            updateObjects() {
+                // 雲の更新
+                this.clouds = this.clouds.filter(cloud => {
+                    cloud.y += cloud.speed;
+                    return cloud.y < this.canvas.height + 200;
+                });
+                
+                // 障害物の更新
+                this.obstacles = this.obstacles.filter(obstacle => {
+                    if (obstacle.type === 'crow') {
+                        obstacle.y += obstacle.speed;
+                        return obstacle.y < this.canvas.height + 300;
+                    } else if (obstacle.type === 'bird') {
+                        if (obstacle.direction === 'left') {
+                            obstacle.x += obstacle.speed;
+                            return obstacle.x < this.canvas.width + 300;
+                        } else {
+                            obstacle.x -= obstacle.speed;
+                            return obstacle.x > -300;
+                        }
+                    }
+                    return true;
+                });
+                
+                // バナナの更新
+                this.bananas = this.bananas.filter(banana => {
+                    banana.y += banana.speed;
+                    return banana.y < this.canvas.height + 300;
+                });
+            }
+
+            checkCollisions() {
+                // 障害物との衝突
+                for (let obstacle of this.obstacles) {
+                    if (this.isColliding(this.player, obstacle)) {
+                        this.gameOver();
+                        return;
+                    }
+                }
+                
+                // バナナとの衝突
+                this.bananas = this.bananas.filter(banana => {
+                    if (this.isColliding(this.player, banana)) {
+                        this.collectBanana();
+                        return false;
+                    }
+                    return true;
+                });
+            }
+
+            isColliding(obj1, obj2) {
+                return obj1.x < obj2.x + obj2.width &&
+                       obj1.x + obj1.width > obj2.x &&
+                       obj1.y < obj2.y + obj2.height &&
+                       obj1.y + obj1.height > obj2.y;
+            }
+
+            collectBanana() {
+                this.bananaCount = Math.min(5, this.bananaCount + 1);
+                
+                // スピードアップ段階
+                const speedLevels = [1.0, 1.6, 2.2, 2.8, 3.0];
+                this.speedMultiplier = speedLevels[this.bananaCount];
+            }
+
+            updateBananaCounter() {
+                const counter = document.getElementById('bananaCounter');
+                counter.innerHTML = '';
+                
+                for (let i = 0; i < this.bananaCount; i++) {
+                    const icon = document.createElement('div');
+                    icon.className = 'banana-icon';
+                    counter.appendChild(icon);
+                }
+            }
+
+            draw() {
+                // キャンバスクリア
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                
+                // 背景
+                const gradient = this.ctx.createLinearGradient(0, 0, 0, this.canvas.height);
+                gradient.addColorStop(0, '#87CEEB');
+                gradient.addColorStop(1, '#98FB98');
+                this.ctx.fillStyle = gradient;
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+                
+                // 雲を描画
+                this.clouds.forEach(cloud => {
+                    this.ctx.globalAlpha = 0.7;
+                    this.ctx.drawImage(
+                        this.assets[cloud.type],
+                        cloud.x, cloud.y, 400, 200
+                    );
+                    this.ctx.globalAlpha = 1.0;
+                });
+                
+                // プレイヤー描画
+                this.ctx.drawImage(
+                    this.player.img,
+                    this.player.x, this.player.y,
+                    this.player.width, this.player.height
+                );
+                
+                // 障害物描画
+                this.obstacles.forEach(obstacle => {
+                    if (obstacle.type === 'crow') {
+                        this.ctx.drawImage(
+                            this.assets.crow,
+                            obstacle.x, obstacle.y,
+                            obstacle.width, obstacle.height
+                        );
+                    } else if (obstacle.type === 'bird') {
+                        this.ctx.drawImage(
+                            this.assets.bird,
+                            obstacle.x, obstacle.y,
+                            obstacle.width, obstacle.height
+                        );
+                    }
+                });
+                
+                // バナナ描画
+                this.bananas.forEach(banana => {
+                    this.ctx.drawImage(
+                        this.assets.banana,
+                        banana.x, banana.y,
+                        banana.width, banana.height
+                    );
+                });
+            }
+
+            gameOver() {
+                this.gameState = 'gameOver';
+                document.getElementById('finalDistance').textContent = Math.floor(this.distance) + 'm';
+                document.getElementById('gameOverScreen').style.display = 'flex';
+            }
+
+            shareScore() {
+                const text = `「くもりんとばし」で${Math.floor(this.distance)}m飛びました！あなたはどこまで飛べる？ #くもりんとばし #サンサンキッズTV`;
+                const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
+                window.open(url, '_blank');
+            }
+
+            showTitleScreen() {
+                document.getElementById('gameScreen').style.display = 'none';
+                document.getElementById('gameOverScreen').style.display = 'none';
+                document.getElementById('titleScreen').style.display = 'flex';
+                this.gameState = 'title';
+            }
+        }
+
+        // ゲーム開始
+        window.addEventListener('load', () => {
+            new KumorinGame();
+        });
+    </script>
+</body>
+</html>
