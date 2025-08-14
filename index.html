@@ -822,26 +822,26 @@
                     });
                 }
                 
-                // 障害物生成（バランス調整済み）
+                // 渡り鳥のみの生成（カラス完全削除に伴い頻度調整）
                 const distanceCheck = Math.floor(this.distance / 100);
                 
-                // 基本確率を上げてカラスの発生頻度を改善
-                let obstacleChance = 0.008; // 基本0.8%
+                // 渡り鳥のみなので頻度を上げて適切な難易度を維持
+                let obstacleChance = 0.015; // 基本1.5%
                 
                 if (this.distance >= 1000) {
-                    obstacleChance = 0.012; // 1000m以降: 1.2%
+                    obstacleChance = 0.020; // 1000m以降: 2.0%
                 }
                 if (this.distance >= 3000) {
-                    obstacleChance = 0.016; // 3000m以降: 1.6%
+                    obstacleChance = 0.025; // 3000m以降: 2.5%
                 }
                 if (this.distance >= 5000) {
-                    obstacleChance = 0.020; // 5000m以降: 2.0%
+                    obstacleChance = 0.030; // 5000m以降: 3.0%
                 }
                 if (this.distance >= 8000) {
-                    obstacleChance = 0.025; // 8000m以降: 2.5%
+                    obstacleChance = 0.035; // 8000m以降: 3.5%
                 }
                 if (this.distance >= 12000) {
-                    obstacleChance = 0.030; // 12000m以降: 3.0%
+                    obstacleChance = 0.040; // 12000m以降: 4.0%
                 }
                 
                 // デバッグログ（低頻度）
@@ -850,105 +850,43 @@
                 }
                 
                 if (Math.random() < obstacleChance) {
-                    // 距離に応じて渡り鳥の出現率を調整（初期はカラス中心）
-                    let birdProbability = 0.2; // 基本20%（カラス80%）
-                    if (this.distance >= 2000) {
-                        birdProbability = 0.4; // 2000m以降: 40%
+                    // 渡り鳥のみを生成（カラスは完全削除）
+                    // 渡り鳥（距離に応じて数を増やす）
+                    const direction = Math.random() < 0.5 ? 'left' : 'right';
+                    const startX = direction === 'left' ? -600 : 1080;
+                    const y = Math.random() * (1920 - 400) + 200; // 画面全体に出現（上下200pxマージン）
+                    
+                    // 距離に応じて鳥の数を増やす
+                    let birdCount = 2; // 初期は2匹
+                    if (this.distance >= 3000) {
+                        birdCount = 3; // 3000m以降は3匹
                     }
-                    if (this.distance >= 4000) {
-                        birdProbability = 0.5; // 4000m以降: 50%
+                    if (this.distance >= 8000) {
+                        birdCount = Math.random() < 0.3 ? 4 : 3; // 30%の確猇4匹
                     }
-                    if (this.distance >= 6000) {
-                        birdProbability = 0.6; // 6000m以降: 60%
-                    }
-                    if (this.distance >= 10000) {
-                        birdProbability = 0.7; // 10000m以降: 70%
+                    if (this.distance >= 12000) {
+                        birdCount = Math.random() < 0.5 ? 4 : 3; // 50%の確猇4匹
                     }
                     
-                    if (Math.random() < birdProbability) {
-                        // 渡り鳥（距離に応じて数を増やす）
-                        const direction = Math.random() < 0.5 ? 'left' : 'right';
-                        const startX = direction === 'left' ? -600 : 1080;
-                        const y = Math.random() * (1920 - 400) + 200; // 画面全体に出現（上下200pxマージン）
-                        
-                        // 距離に応じて鳥の数を増やす（初期は少なく）
-                        let birdCount = 2; // 初期は2匹
-                        if (this.distance >= 3000) {
-                            birdCount = 3; // 3000m以降は3匹
-                        }
-                        if (this.distance >= 8000) {
-                            birdCount = Math.random() < 0.3 ? 4 : 3; // 30%の確猇4匹
-                        }
-                        if (this.distance >= 12000) {
-                            birdCount = Math.random() < 0.5 ? 4 : 3; // 50%の確猇4匹
+                    for (let i = 0; i < birdCount; i++) {
+                        let birdX;
+                        if (direction === 'left') {
+                            // 左から右へ移動: 先頭が一番左に
+                            birdX = startX + (i * 250);
+                        } else {
+                            // 右から左へ移動: 先頭が一番右に
+                            birdX = startX - (i * 250);
                         }
                         
-                        for (let i = 0; i < birdCount; i++) {
-                            let birdX;
-                            if (direction === 'left') {
-                                // 左から右へ移動: 先頭が一番左に
-                                birdX = startX + (i * 250);
-                            } else {
-                                // 右から左へ移動: 先頭が一番右に
-                                birdX = startX - (i * 250);
-                            }
-                            
-                            this.obstacles.push({
-                                x: birdX,
-                                y: y,
-                                width: 200,
-                                height: 200,
-                                type: 'bird',
-                                direction: direction,
-                                speed: 11 * this.speedMultiplier
-                            });
-                        }
-                    } else {
-                        // カラス（回避可能な配置で生成）
-                        let crowSpeed = 2.5; // 初期はやや遅め
-                        if (this.distance >= 3000) {
-                            crowSpeed = 3; // 3000m以降は基本速度
-                        }
-                        if (this.distance >= 8000) {
-                            crowSpeed = 4; // 8000m以降は速く
-                        }
-                        if (this.distance >= 12000) {
-                            crowSpeed = 5; // 12000m以降はさらに速く
-                        }
-                        
-                        // 回避可能な位置にカラスを配置（他のカラスとの距離をチェック）
-                        let attempts = 0;
-                        let crowX, isValidPosition;
-                        
-                        do {
-                            crowX = Math.random() * (1080 - 200);
-                            isValidPosition = true;
-                            
-                            // 現在アクティブなカラスとの距離をチェック
-                            for (let existingObstacle of this.obstacles) {
-                                if (existingObstacle.type === 'crow' && 
-                                    existingObstacle.y > -400 && existingObstacle.y < 200) { // 近い位置のカラスのみチェック
-                                    const distance = Math.abs(crowX - existingObstacle.x);
-                                    if (distance < 350) { // 最低350pxの隙間を確保（プレイヤーの幅300px + マージン50px）
-                                        isValidPosition = false;
-                                        break;
-                                    }
-                                }
-                            }
-                            attempts++;
-                        } while (!isValidPosition && attempts < 10); // 最大9回試行
-                        
-                        // 適切な位置が見つかった、または試行回数上限に達した場合のみ生成
-                        if (isValidPosition || attempts >= 10) {
-                            this.obstacles.push({
-                                x: crowX,
-                                y: -200,
-                                width: 200,
-                                height: 200,
-                                type: 'crow',
-                                speed: crowSpeed * this.speedMultiplier
-                            });
-                        }
+                        this.obstacles.push({
+                            x: birdX,
+                            y: y,
+                            width: 200,
+                            height: 200,
+                            type: 'bird',
+                            direction: direction,
+                            speed: 11 * this.speedMultiplier
+                        });
                     }
                 }
                 
@@ -976,12 +914,9 @@
                     return cloud.y < 1920 + 200; // 1920 + 200 = 2120
                 });
                 
-                // 障害物の更新
+                // 渡り鳥のみの更新（カラスは完全削除）
                 this.obstacles = this.obstacles.filter(obstacle => {
-                    if (obstacle.type === 'crow') {
-                        obstacle.y += obstacle.speed;
-                        return obstacle.y < 1920 + 200; // 1920 + 200 = 2120
-                    } else if (obstacle.type === 'bird') {
+                    if (obstacle.type === 'bird') {
                         if (obstacle.direction === 'left') {
                             obstacle.x += obstacle.speed;
                             return obstacle.x < 1080 + 200; // 1080 + 200 = 1280
@@ -990,7 +925,7 @@
                             return obstacle.x > -200;
                         }
                     }
-                    return true;
+                    return false; // カラスはすべて除去
                 });
                 
                 // バナナの更新
@@ -1098,34 +1033,28 @@
                 
                 // プレイヤー描画はHTML要素で行うため、ここでは描画しない
                 
-                // 障害物描画（サイズを小さく、アスペクト比を正方形に）
+                // 渡り鳥のみ描画（カラスは完全削除）
                 this.obstacles.forEach(obstacle => {
-                    const drawWidth = 200;  // 300から200に縮小
-                    const drawHeight = 200; // 正方形に保つ
-                    
-                    if (obstacle.type === 'crow') {
-                        this.ctx.drawImage(
-                            this.assets.crow,
-                            obstacle.x, obstacle.y,
-                            drawWidth, drawHeight
-                        );
-                    } else if (obstacle.type === 'bird') {
-                        // 渡り鳥の方向に応じて画像を反転
+                    if (obstacle.type === 'bird') {
+                        const drawWidth = 200;
+                        const drawHeight = 200;
+                        
+                        // 渡り鳥の方向に応じて画像を調整（反転問題修正）
                         this.ctx.save();
                         
-                        if (obstacle.direction === 'right') {
-                            // 右から左へ移動する場合は画像を反転
+                        if (obstacle.direction === 'left') {
+                            // 左から右へ移動: 通常描画（鳥が右を向いている）
+                            this.ctx.drawImage(
+                                this.assets.bird,
+                                obstacle.x, obstacle.y,
+                                drawWidth, drawHeight
+                            );
+                        } else {
+                            // 右から左へ移動: 画像を反転（鳥が左を向く）
                             this.ctx.scale(-1, 1);
                             this.ctx.drawImage(
                                 this.assets.bird,
                                 -(obstacle.x + drawWidth), obstacle.y,
-                                drawWidth, drawHeight
-                            );
-                        } else {
-                            // 左から右へ移動する場合は通常描画
-                            this.ctx.drawImage(
-                                this.assets.bird,
-                                obstacle.x, obstacle.y,
                                 drawWidth, drawHeight
                             );
                         }
