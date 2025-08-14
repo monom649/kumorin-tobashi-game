@@ -853,8 +853,15 @@
                     // 渡り鳥のみを生成（カラスは完全削除）
                     // 渡り鳥（1体ずつ飛行）
                     const direction = Math.random() < 0.5 ? 'left' : 'right';
-                    const startX = direction === 'left' ? -200 : 1080;
-                    const y = Math.random() * (1920 - 400) + 200; // 画面全体に出現（上下200pxマージン）
+                    // 必ず画面外からスタートするように、より遠くに設定
+                    const startX = direction === 'left' ? -300 : 1380; // 1080 + 300 = 1380
+                    // Y座標は中央付近に限定して突然描画を防止
+                    const y = Math.random() * 800 + 560; // 560〜1360pxの範囲（画面中央付近）
+                    
+                    // デバッグログ（突然描画確認用）
+                    if (this.debugMode) {
+                        console.log(`渡り鳥生成: direction=${direction}, startX=${startX}, y=${y}`);
+                    }
                     
                     // 鳥の速度を距離に応じて調整（60%に減速）
                     let birdSpeed = 5; // 基本速度（8の60% = 4.8 → 5）
@@ -900,15 +907,17 @@
                     return cloud.y < 1920 + 200; // 1920 + 200 = 2120
                 });
                 
-                // 渡り鳥のみの更新（カラスは完全削除）
+                // 渡り鳥のみの更新（突然描画防止のため厳密な判定）
                 this.obstacles = this.obstacles.filter(obstacle => {
                     if (obstacle.type === 'bird') {
                         if (obstacle.direction === 'left') {
                             obstacle.x += obstacle.speed;
-                            return obstacle.x < 1080 + 200; // 1080 + 200 = 1280
+                            // 十分に画面外に出たら削除
+                            return obstacle.x < 1080 + 400; // 1080 + 400 = 1480
                         } else {
                             obstacle.x -= obstacle.speed;
-                            return obstacle.x > -200;
+                            // 十分に画面外に出たら削除
+                            return obstacle.x > -400;
                         }
                     }
                     return false; // カラスはすべて除去
