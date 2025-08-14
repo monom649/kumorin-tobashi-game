@@ -823,25 +823,25 @@
                 }
                 
                 // 障害物生成（バランス調整済み）
-                const distanceCheck = Math.floor(this.distance / 100); // 100mごとに判定で頻度を下げる
+                const distanceCheck = Math.floor(this.distance / 100);
                 
-                // 基本確率: 0.3%から始まり、緩やかに上昇
-                let obstacleChance = 0.003; // 基本0.3%
+                // 基本確率を上げてカラスの発生頻度を改善
+                let obstacleChance = 0.008; // 基本0.8%
                 
                 if (this.distance >= 1000) {
-                    obstacleChance = 0.005; // 1000m以降: 0.5%
+                    obstacleChance = 0.012; // 1000m以降: 1.2%
                 }
                 if (this.distance >= 3000) {
-                    obstacleChance = 0.008; // 3000m以降: 0.8%
+                    obstacleChance = 0.016; // 3000m以降: 1.6%
                 }
                 if (this.distance >= 5000) {
-                    obstacleChance = 0.012; // 5000m以降: 1.2%
+                    obstacleChance = 0.020; // 5000m以降: 2.0%
                 }
                 if (this.distance >= 8000) {
-                    obstacleChance = 0.015; // 8000m以降: 1.5%
+                    obstacleChance = 0.025; // 8000m以降: 2.5%
                 }
                 if (this.distance >= 12000) {
-                    obstacleChance = 0.020; // 12000m以降: 2.0%
+                    obstacleChance = 0.030; // 12000m以降: 3.0%
                 }
                 
                 // デバッグログ（低頻度）
@@ -869,7 +869,7 @@
                         // 渡り鳥（距離に応じて数を増やす）
                         const direction = Math.random() < 0.5 ? 'left' : 'right';
                         const startX = direction === 'left' ? -600 : 1080;
-                        const y = Math.random() * (1920 / 2); // 1920 / 2 = 960
+                        const y = Math.random() * (1920 - 400) + 200; // 画面全体に出現（上下200pxマージン）
                         
                         // 距離に応じて鳥の数を増やす（初期は少なく）
                         let birdCount = 2; // 初期は2匹
@@ -884,8 +884,17 @@
                         }
                         
                         for (let i = 0; i < birdCount; i++) {
+                            let birdX;
+                            if (direction === 'left') {
+                                // 左から右へ移動: 先頭が一番左に
+                                birdX = startX + (i * 250);
+                            } else {
+                                // 右から左へ移動: 先頭が一番右に
+                                birdX = startX - (i * 250);
+                            }
+                            
                             this.obstacles.push({
-                                x: startX + (i * 250), // 間隔も調整
+                                x: birdX,
                                 y: y,
                                 width: 200,
                                 height: 200,
