@@ -904,7 +904,7 @@
                             });
                         }
                     } else {
-                        // カラス（距離に応じて速度アップ）
+                        // カラス（回避可能な配置で生成）
                         let crowSpeed = 2.5; // 初期はやや遅め
                         if (this.distance >= 3000) {
                             crowSpeed = 3; // 3000m以降は基本速度
@@ -916,14 +916,39 @@
                             crowSpeed = 5; // 12000m以降はさらに速く
                         }
                         
-                        this.obstacles.push({
-                            x: Math.random() * (1080 - 200), // 1080 - 200 = 880
-                            y: -200,
-                            width: 200,
-                            height: 200,
-                            type: 'crow',
-                            speed: crowSpeed * this.speedMultiplier
-                        });
+                        // 回避可能な位置にカラスを配置（他のカラスとの距離をチェック）
+                        let attempts = 0;
+                        let crowX, isValidPosition;
+                        
+                        do {
+                            crowX = Math.random() * (1080 - 200);
+                            isValidPosition = true;
+                            
+                            // 現在アクティブなカラスとの距離をチェック
+                            for (let existingObstacle of this.obstacles) {
+                                if (existingObstacle.type === 'crow' && 
+                                    existingObstacle.y > -400 && existingObstacle.y < 200) { // 近い位置のカラスのみチェック
+                                    const distance = Math.abs(crowX - existingObstacle.x);
+                                    if (distance < 350) { // 最低350pxの隙間を確保（プレイヤーの幅300px + マージン50px）
+                                        isValidPosition = false;
+                                        break;
+                                    }
+                                }
+                            }
+                            attempts++;
+                        } while (!isValidPosition && attempts < 10); // 最大9回試行
+                        
+                        // 適切な位置が見つかった、または試行回数上限に達した場合のみ生成
+                        if (isValidPosition || attempts >= 10) {
+                            this.obstacles.push({
+                                x: crowX,
+                                y: -200,
+                                width: 200,
+                                height: 200,
+                                type: 'crow',
+                                speed: crowSpeed * this.speedMultiplier
+                            });
+                        }
                     }
                 }
                 
@@ -1085,11 +1110,27 @@
                             drawWidth, drawHeight
                         );
                     } else if (obstacle.type === 'bird') {
-                        this.ctx.drawImage(
-                            this.assets.bird,
-                            obstacle.x, obstacle.y,
-                            drawWidth, drawHeight
-                        );
+                        // 渡り鳥の方向に応じて画像を反転
+                        this.ctx.save();
+                        
+                        if (obstacle.direction === 'right') {
+                            // 右から左へ移動する場合は画像を反転
+                            this.ctx.scale(-1, 1);
+                            this.ctx.drawImage(
+                                this.assets.bird,
+                                -(obstacle.x + drawWidth), obstacle.y,
+                                drawWidth, drawHeight
+                            );
+                        } else {
+                            // 左から右へ移動する場合は通常描画
+                            this.ctx.drawImage(
+                                this.assets.bird,
+                                obstacle.x, obstacle.y,
+                                drawWidth, drawHeight
+                            );
+                        }
+                        
+                        this.ctx.restore();
                     }
                 });
                 
