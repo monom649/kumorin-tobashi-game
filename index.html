@@ -37,7 +37,7 @@
         #titleScreen {
             width: 100vw;
             height: 100vh;
-            background-image: url('https://imgur.com/yuOkMHz.jpg');
+            background-image: url('https://i.imgur.com/yuOkMHz.jpg');
             background-size: cover;
             background-position: center;
             display: flex;
@@ -50,7 +50,7 @@
         #kumorinGif {
             width: 500px;
             height: 500px;
-            background-image: url('https://imgur.com/a/dLPGHNh.gif');
+            background-image: url('https://i.imgur.com/0hQMgso.gif');
             background-size: contain;
             background-repeat: no-repeat;
             background-position: center;
@@ -89,7 +89,7 @@
             transform: translateX(-50%);
             width: 300px;
             height: 300px;
-            background-image: url('https://imgur.com/a/dLPGHNh.gif');
+            background-image: url('https://i.imgur.com/0hQMgso.gif');
             background-size: contain;
             background-repeat: no-repeat;
             background-position: center;
@@ -102,7 +102,7 @@
             transform: translateX(-50%);
             width: 300px;
             height: 300px;
-            background-image: url('https://imgur.com/4aHLhwq.jpg');
+            background-image: url('https://i.imgur.com/4aHLhwq.jpg');
             background-size: contain;
             background-repeat: no-repeat;
             background-position: center;
@@ -156,7 +156,7 @@
         .banana-icon {
             width: 40px;
             height: 40px;
-            background-image: url('https://imgur.com/n4B27qz.jpg');
+            background-image: url('https://i.imgur.com/n4B27qz.jpg');
             background-size: contain;
             background-repeat: no-repeat;
         }
@@ -278,6 +278,7 @@
                 
                 this.setupEventListeners();
                 this.loadAssets();
+                this.loadAudio();
             }
 
             setupCanvas() {
@@ -341,7 +342,7 @@
 
             loadAssets() {
                 // 画像の読み込み
-                this.player.img.src = 'https://imgur.com/a/dLPGHNh.gif';
+                this.player.img.src = 'https://i.imgur.com/0hQMgso.gif';
                 
                 // 他のアセットも同様に読み込み
                 this.assets = {
@@ -352,11 +353,55 @@
                     cloud2: new Image()
                 };
                 
-                this.assets.crow.src = 'https://imgur.com/TdVc7OM.jpg';
-                this.assets.bird.src = 'https://imgur.com/gOrPr79.jpg';
-                this.assets.banana.src = 'https://imgur.com/n4B27qz.jpg';
-                this.assets.cloud1.src = 'https://imgur.com/qY1JVuT.jpg';
-                this.assets.cloud2.src = 'https://imgur.com/0ybVRKX.jpg';
+                this.assets.crow.src = 'https://i.imgur.com/TdVc7OM.jpg';
+                this.assets.bird.src = 'https://i.imgur.com/gOrPr79.jpg';
+                this.assets.banana.src = 'https://i.imgur.com/n4B27qz.jpg';
+                this.assets.cloud1.src = 'https://i.imgur.com/qY1JVuT.jpg';
+                this.assets.cloud2.src = 'https://i.imgur.com/0ybVRKX.jpg';
+            }
+
+            loadAudio() {
+                // 音声ファイルの読み込み
+                this.audio = {
+                    title: new Audio('https://example.com/title.wav'),
+                    soda: new Audio('https://example.com/soda.wav'),
+                    ohno: new Audio('https://example.com/ohno.wav'),
+                    gamestart: new Audio('https://example.com/gamestart.wav'),
+                    item: new Audio('https://example.com/item.wav'),
+                    out: new Audio('https://example.com/out.wav'),
+                    gameover: new Audio('https://example.com/gameover.wav'),
+                    bgm: new Audio('https://example.com/BGM_HURRY.mp3')
+                };
+                
+                // BGMをループ設定
+                this.audio.bgm.loop = true;
+                
+                // 音量調整
+                Object.values(this.audio).forEach(audio => {
+                    audio.volume = 0.7;
+                });
+            }
+
+            playAudio(audioName) {
+                try {
+                    if (this.audio[audioName]) {
+                        this.audio[audioName].currentTime = 0;
+                        this.audio[audioName].play();
+                    }
+                } catch (error) {
+                    console.log('音声再生エラー:', error);
+                }
+            }
+
+            stopAudio(audioName) {
+                try {
+                    if (this.audio[audioName]) {
+                        this.audio[audioName].pause();
+                        this.audio[audioName].currentTime = 0;
+                    }
+                } catch (error) {
+                    console.log('音声停止エラー:', error);
+                }
             }
 
             startIntro() {
@@ -367,11 +412,13 @@
                 setTimeout(() => {
                     const soda = document.getElementById('sodaOjisan');
                     soda.classList.add('soda-entrance');
+                    this.playAudio('soda'); // ソーダおじさん登場音
                     
                     // 1秒後にくもりん飛び出し
                     setTimeout(() => {
                         const kumorin = document.getElementById('kumorinIntro');
                         kumorin.classList.add('kumorin-flyout');
+                        this.playAudio('ohno'); // くもりん飛ばされる音
                         
                         // 1秒後にゲーム開始
                         setTimeout(() => {
@@ -399,6 +446,10 @@
                 this.obstacles = [];
                 this.clouds = [];
                 this.bananas = [];
+                
+                // ゲーム開始音とBGM
+                this.playAudio('gamestart');
+                this.playAudio('bgm');
                 
                 this.gameLoop();
             }
@@ -576,6 +627,9 @@
                 // スピードアップ段階
                 const speedLevels = [1.0, 1.6, 2.2, 2.8, 3.0];
                 this.speedMultiplier = speedLevels[this.bananaCount];
+                
+                // バナナ取得音
+                this.playAudio('item');
             }
 
             updateBananaCounter() {
@@ -646,6 +700,14 @@
 
             gameOver() {
                 this.gameState = 'gameOver';
+                
+                // BGM停止と効果音再生
+                this.stopAudio('bgm');
+                this.playAudio('out');
+                setTimeout(() => {
+                    this.playAudio('gameover');
+                }, 500);
+                
                 document.getElementById('finalDistance').textContent = Math.floor(this.distance) + 'm';
                 document.getElementById('gameOverScreen').style.display = 'flex';
             }
@@ -666,7 +728,9 @@
 
         // ゲーム開始
         window.addEventListener('load', () => {
-            new KumorinGame();
+            const game = new KumorinGame();
+            // タイトル画面表示時に音楽再生
+            game.playAudio('title');
         });
     </script>
 </body>
