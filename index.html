@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=1080, height=1920, initial-scale=1.0, user-scalable=no, maximum-scale=1.0, minimum-scale=1.0">
     <title>くもりんとばし</title>
     <style>
         body {
@@ -14,6 +14,11 @@
             touch-action: none;
             user-select: none;
             -webkit-user-select: none;
+            width: 1080px;
+            height: 1920px;
+            position: fixed;
+            top: 0;
+            left: 0;
         }
 
         /* 縦向き固定 */
@@ -35,8 +40,8 @@
 
         /* タイトル画面 */
         #titleScreen {
-            width: 100vw;
-            height: 100vh;
+            width: 1080px;
+            height: 1920px;
             background-image: url('https://i.imgur.com/yuOkMHz.jpg');
             background-size: cover;
             background-position: center;
@@ -75,8 +80,8 @@
         /* 導入演出画面 */
         #introScreen {
             display: none;
-            width: 100vw;
-            height: 100vh;
+            width: 1080px;
+            height: 1920px;
             background: linear-gradient(to bottom, #87CEEB, #98FB98);
             position: relative;
             overflow: hidden;
@@ -111,14 +116,14 @@
         /* ゲーム画面 */
         #gameScreen {
             display: none;
-            width: 100vw;
-            height: 100vh;
+            width: 1080px;
+            height: 1920px;
             position: relative;
         }
 
         #gameCanvas {
-            width: 100%;
-            height: 100%;
+            width: 1080px;
+            height: 1920px;
             background: linear-gradient(to bottom, #87CEEB, #98FB98);
             display: block;
         }
@@ -128,8 +133,8 @@
             position: absolute;
             top: 0;
             left: 0;
-            width: 100%;
-            height: 100%;
+            width: 1080px;
+            height: 1920px;
             pointer-events: none;
             z-index: 10;
         }
@@ -194,8 +199,8 @@
             position: absolute;
             top: 0;
             left: 0;
-            width: 100%;
-            height: 100%;
+            width: 1080px;
+            height: 1920px;
             background: rgba(0,0,0,0.8);
             z-index: 20;
             justify-content: center;
@@ -322,8 +327,8 @@
             }
 
             setupCanvas() {
-                this.canvas.width = window.innerWidth;
-                this.canvas.height = window.innerHeight;
+                this.canvas.width = 1080;
+                this.canvas.height = 1920;
             }
 
             setupEventListeners() {
@@ -352,10 +357,7 @@
                     this.enterTestMode();
                 });
 
-                // 画面リサイズ対応
-                window.addEventListener('resize', () => {
-                    this.setupCanvas();
-                });
+                // 固定サイズなのでリサイズイベントは不要
             }
 
             requestGyroPermission() {
@@ -436,7 +438,7 @@
                 canvas.addEventListener('touchstart', (e) => {
                     e.preventDefault();
                     const touch = e.touches[0];
-                    const centerX = canvas.width / 2;
+                    const centerX = 540; // 1080px / 2
                     
                     if (touch.clientX < centerX) {
                         this.touchDirection = 'left';
@@ -550,8 +552,8 @@
                 this.speedMultiplier = 1.0;
                 
                 // プレイヤー初期位置
-                this.player.x = this.canvas.width / 2 - this.player.width / 2;
-                this.player.y = this.canvas.height - this.player.height - 100;
+                this.player.x = 540 - this.player.width / 2; // 1080 / 2 - 300 / 2 = 390
+                this.player.y = 1920 - this.player.height - 100; // 1920 - 300 - 100 = 1520
                 
                 // 配列クリア
                 this.obstacles = [];
@@ -651,8 +653,8 @@
                 
                 // 画面内制限
                 if (this.player.x < 50) this.player.x = 50;
-                if (this.player.x > this.canvas.width - this.player.width - 50) {
-                    this.player.x = this.canvas.width - this.player.width - 50;
+                if (this.player.x > 1080 - this.player.width - 50) {
+                    this.player.x = 1080 - this.player.width - 50; // 1080 - 300 - 50 = 730
                 }
             }
 
@@ -660,7 +662,7 @@
                 // 雲の生成
                 if (Math.random() < 0.1) {
                     this.clouds.push({
-                        x: Math.random() * this.canvas.width,
+                        x: Math.random() * 1080,
                         y: -200,
                         type: Math.random() < 0.5 ? 'cloud1' : 'cloud2',
                         speed: 5 * this.speedMultiplier
@@ -675,7 +677,7 @@
                     if (Math.random() < 0.5) {
                         // カラス
                         this.obstacles.push({
-                            x: Math.random() * (this.canvas.width - 300),
+                            x: Math.random() * (1080 - 300), // 1080 - 300 = 780
                             y: -300,
                             width: 300,
                             height: 300,
@@ -685,8 +687,8 @@
                     } else {
                         // 渡り鳥（3匹1列）
                         const direction = Math.random() < 0.5 ? 'left' : 'right';
-                        const startX = direction === 'left' ? -900 : this.canvas.width;
-                        const y = Math.random() * (this.canvas.height / 2);
+                        const startX = direction === 'left' ? -900 : 1080;
+                        const y = Math.random() * (1920 / 2); // 1920 / 2 = 960
                         
                         for (let i = 0; i < 3; i++) {
                             this.obstacles.push({
@@ -705,7 +707,7 @@
                 // バナナ生成（100mごとに40%の確率）
                 if (Math.floor(this.distance) % 100 === 0 && Math.random() < 0.4) {
                     this.bananas.push({
-                        x: Math.random() * (this.canvas.width - 300),
+                        x: Math.random() * (1080 - 300), // 1080 - 300 = 780
                         y: -300,
                         width: 300,
                         height: 300,
@@ -718,18 +720,18 @@
                 // 雲の更新
                 this.clouds = this.clouds.filter(cloud => {
                     cloud.y += cloud.speed;
-                    return cloud.y < this.canvas.height + 200;
+                    return cloud.y < 1920 + 200; // 1920 + 200 = 2120
                 });
                 
                 // 障害物の更新
                 this.obstacles = this.obstacles.filter(obstacle => {
                     if (obstacle.type === 'crow') {
                         obstacle.y += obstacle.speed;
-                        return obstacle.y < this.canvas.height + 300;
+                        return obstacle.y < 1920 + 300; // 1920 + 300 = 2220
                     } else if (obstacle.type === 'bird') {
                         if (obstacle.direction === 'left') {
                             obstacle.x += obstacle.speed;
-                            return obstacle.x < this.canvas.width + 300;
+                            return obstacle.x < 1080 + 300; // 1080 + 300 = 1380
                         } else {
                             obstacle.x -= obstacle.speed;
                             return obstacle.x > -300;
@@ -741,7 +743,7 @@
                 // バナナの更新
                 this.bananas = this.bananas.filter(banana => {
                     banana.y += banana.speed;
-                    return banana.y < this.canvas.height + 300;
+                    return banana.y < 1920 + 300; // 1920 + 300 = 2220
                 });
             }
 
@@ -795,14 +797,14 @@
 
             draw() {
                 // キャンバスクリア
-                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                this.ctx.clearRect(0, 0, 1080, 1920);
                 
                 // 背景
-                const gradient = this.ctx.createLinearGradient(0, 0, 0, this.canvas.height);
+                const gradient = this.ctx.createLinearGradient(0, 0, 0, 1920);
                 gradient.addColorStop(0, '#87CEEB');
                 gradient.addColorStop(1, '#98FB98');
                 this.ctx.fillStyle = gradient;
-                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+                this.ctx.fillRect(0, 0, 1080, 1920);
                 
                 // 雲を描画
                 this.clouds.forEach(cloud => {
