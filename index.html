@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=1080, height=1920, initial-scale=1.0, user-scalable=no, maximum-scale=1.0, minimum-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0, minimum-scale=1.0">
     <title>くもりんとばし</title>
     <style>
         body {
@@ -14,11 +14,22 @@
             touch-action: none;
             user-select: none;
             -webkit-user-select: none;
-            width: 1080px;
-            height: 1920px;
+            width: 100vw;
+            height: 100vh;
             position: fixed;
             top: 0;
             left: 0;
+        }
+
+        /* ゲームコンテナ: 1920×1080比率を維持してスケール */
+        .game-container {
+            width: 1080px;
+            height: 1920px;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform-origin: center;
+            background: #000;
         }
 
         /* 縦向き固定 */
@@ -40,8 +51,8 @@
 
         /* タイトル画面 */
         #titleScreen {
-            width: 1080px;
-            height: 1920px;
+            width: 100%;
+            height: 100%;
             background-image: url('https://i.imgur.com/yuOkMHz.jpg');
             background-size: cover;
             background-position: center;
@@ -80,8 +91,8 @@
         /* 導入演出画面 */
         #introScreen {
             display: none;
-            width: 1080px;
-            height: 1920px;
+            width: 100%;
+            height: 100%;
             background: linear-gradient(to bottom, #87CEEB, #98FB98);
             position: relative;
             overflow: hidden;
@@ -116,14 +127,14 @@
         /* ゲーム画面 */
         #gameScreen {
             display: none;
-            width: 1080px;
-            height: 1920px;
+            width: 100%;
+            height: 100%;
             position: relative;
         }
 
         #gameCanvas {
-            width: 1080px;
-            height: 1920px;
+            width: 100%;
+            height: 100%;
             background: linear-gradient(to bottom, #87CEEB, #98FB98);
             display: block;
         }
@@ -133,8 +144,8 @@
             position: absolute;
             top: 0;
             left: 0;
-            width: 1080px;
-            height: 1920px;
+            width: 100%;
+            height: 100%;
             pointer-events: none;
             z-index: 10;
         }
@@ -199,8 +210,8 @@
             position: absolute;
             top: 0;
             left: 0;
-            width: 1080px;
-            height: 1920px;
+            width: 100%;
+            height: 100%;
             background: rgba(0,0,0,0.8);
             z-index: 20;
             justify-content: center;
@@ -247,41 +258,43 @@
     </style>
 </head>
 <body>
-    <!-- タイトル画面 -->
-    <div id="titleScreen">
-        <button id="testModeButton">🔧 テストモード</button>
-        <div id="kumorinGif"></div>
-        <button id="startButton">スタート</button>
-    </div>
+    <div class="game-container" id="gameContainer">
+        <!-- タイトル画面 -->
+        <div id="titleScreen">
+            <button id="testModeButton">🔧 テストモード</button>
+            <div id="kumorinGif"></div>
+            <button id="startButton">スタート</button>
+        </div>
 
-    <!-- 導入演出画面 -->
-    <div id="introScreen">
-        <div id="kumorinIntro"></div>
-        <div id="sodaOjisan"></div>
-    </div>
+        <!-- 導入演出画面 -->
+        <div id="introScreen">
+            <div id="kumorinIntro"></div>
+            <div id="sodaOjisan"></div>
+        </div>
 
-    <!-- ゲーム画面 -->
-    <div id="gameScreen">
-        <canvas id="gameCanvas"></canvas>
-        <div id="gameUI">
-            <div id="distanceDisplay">0m</div>
-            <div id="bananaCounter"></div>
-            <div id="debugInfo">
-                <div>ジャイロ: <span id="gyroStatus">未取得</span></div>
-                <div>Alpha: <span id="alphaValue">0</span>°</div>
-                <div>Gamma: <span id="gammaValue">0</span>°</div>
-                <div>操作: <span id="controlStatus">待機中</span></div>
+        <!-- ゲーム画面 -->
+        <div id="gameScreen">
+            <canvas id="gameCanvas"></canvas>
+            <div id="gameUI">
+                <div id="distanceDisplay">0m</div>
+                <div id="bananaCounter"></div>
+                <div id="debugInfo">
+                    <div>ジャイロ: <span id="gyroStatus">未取得</span></div>
+                    <div>Alpha: <span id="alphaValue">0</span>°</div>
+                    <div>Gamma: <span id="gammaValue">0</span>°</div>
+                    <div>操作: <span id="controlStatus">待機中</span></div>
+                </div>
             </div>
         </div>
-    </div>
 
-    <!-- ゲームオーバー画面 -->
-    <div id="gameOverScreen">
-        <h1>ゲームオーバー</h1>
-        <div id="finalDistance">0m</div>
-        <button class="button" id="retryButton">もう一度プレイ</button>
-        <button class="button" id="shareButton">結果をシェア</button>
-        <button class="button" id="titleButton">タイトルに戻る</button>
+        <!-- ゲームオーバー画面 -->
+        <div id="gameOverScreen">
+            <h1>ゲームオーバー</h1>
+            <div id="finalDistance">0m</div>
+            <button class="button" id="retryButton">もう一度プレイ</button>
+            <button class="button" id="shareButton">結果をシェア</button>
+            <button class="button" id="titleButton">タイトルに戻る</button>
+        </div>
     </div>
 
     <script>
@@ -290,6 +303,9 @@
             constructor() {
                 this.canvas = document.getElementById('gameCanvas');
                 this.ctx = this.canvas.getContext('2d');
+                
+                // 画面スケーリングの設定
+                this.setupScreenScale();
                 this.setupCanvas();
                 
                 // ゲーム状態
@@ -324,6 +340,36 @@
                 this.setupEventListeners();
                 this.loadAssets();
                 this.loadAudio();
+            }
+
+            setupScreenScale() {
+                const container = document.getElementById('gameContainer');
+                const targetWidth = 1080;
+                const targetHeight = 1920;
+                const targetRatio = targetWidth / targetHeight;
+                
+                const updateScale = () => {
+                    const screenWidth = window.innerWidth;
+                    const screenHeight = window.innerHeight;
+                    const screenRatio = screenWidth / screenHeight;
+                    
+                    let scale;
+                    if (screenRatio > targetRatio) {
+                        // 画面が横に広い場合、高さに合わせる
+                        scale = screenHeight / targetHeight;
+                    } else {
+                        // 画面が縦に長い場合、幅に合わせる
+                        scale = screenWidth / targetWidth;
+                    }
+                    
+                    container.style.transform = `translate(-50%, -50%) scale(${scale})`;
+                };
+                
+                updateScale();
+                window.addEventListener('resize', updateScale);
+                window.addEventListener('orientationchange', () => {
+                    setTimeout(updateScale, 100);
+                });
             }
 
             setupCanvas() {
@@ -438,9 +484,11 @@
                 canvas.addEventListener('touchstart', (e) => {
                     e.preventDefault();
                     const touch = e.touches[0];
-                    const centerX = 540; // 1080px / 2
+                    const rect = canvas.getBoundingClientRect();
+                    const x = touch.clientX - rect.left;
+                    const centerX = rect.width / 2;
                     
-                    if (touch.clientX < centerX) {
+                    if (x < centerX) {
                         this.touchDirection = 'left';
                     } else {
                         this.touchDirection = 'right';
