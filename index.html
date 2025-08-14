@@ -822,14 +822,26 @@
                     });
                 }
                 
-                // 障害物生成（距離に応じた難易度上昇）
-                const distanceCheck = Math.floor(this.distance / 50);
-                // 基本確率: 2%から始まり、5000mで最大6%、その後は6%で固定
-                let obstacleChance = Math.min(0.06, 0.02 + (distanceCheck * 0.0008));
+                // 障害物生成（バランス調整済み）
+                const distanceCheck = Math.floor(this.distance / 100); // 100mごとに判定で頻度を下げる
                 
-                // 10000m以降はさらに難易度アップ
-                if (this.distance >= 10000) {
-                    obstacleChance = Math.min(0.08, obstacleChance + 0.02);
+                // 基本確率: 0.3%から始まり、緩やかに上昇
+                let obstacleChance = 0.003; // 基本0.3%
+                
+                if (this.distance >= 1000) {
+                    obstacleChance = 0.005; // 1000m以降: 0.5%
+                }
+                if (this.distance >= 3000) {
+                    obstacleChance = 0.008; // 3000m以降: 0.8%
+                }
+                if (this.distance >= 5000) {
+                    obstacleChance = 0.012; // 5000m以降: 1.2%
+                }
+                if (this.distance >= 8000) {
+                    obstacleChance = 0.015; // 8000m以降: 1.5%
+                }
+                if (this.distance >= 12000) {
+                    obstacleChance = 0.020; // 12000m以降: 2.0%
                 }
                 
                 // デバッグログ（低頻度）
@@ -838,13 +850,19 @@
                 }
                 
                 if (Math.random() < obstacleChance) {
-                    // 距離に応じて渡り鳥の出現率を上げる
-                    let birdProbability = 0.5; // 基本50%
-                    if (this.distance >= 5000) {
-                        birdProbability = 0.6; // 5000m以降は60%
+                    // 距離に応じて渡り鳥の出現率を調整（初期はカラス中心）
+                    let birdProbability = 0.2; // 基本20%（カラス80%）
+                    if (this.distance >= 2000) {
+                        birdProbability = 0.4; // 2000m以降: 40%
+                    }
+                    if (this.distance >= 4000) {
+                        birdProbability = 0.5; // 4000m以降: 50%
+                    }
+                    if (this.distance >= 6000) {
+                        birdProbability = 0.6; // 6000m以降: 60%
                     }
                     if (this.distance >= 10000) {
-                        birdProbability = 0.7; // 10000m以降は70%
+                        birdProbability = 0.7; // 10000m以降: 70%
                     }
                     
                     if (Math.random() < birdProbability) {
@@ -853,8 +871,11 @@
                         const startX = direction === 'left' ? -600 : 1080;
                         const y = Math.random() * (1920 / 2); // 1920 / 2 = 960
                         
-                        // 距離に応じて鳥の数を増やす
-                        let birdCount = 3; // 基本3匹
+                        // 距離に応じて鳥の数を増やす（初期は少なく）
+                        let birdCount = 2; // 初期は2匹
+                        if (this.distance >= 3000) {
+                            birdCount = 3; // 3000m以降は3匹
+                        }
                         if (this.distance >= 8000) {
                             birdCount = Math.random() < 0.3 ? 4 : 3; // 30%の確猇4匹
                         }
@@ -875,7 +896,10 @@
                         }
                     } else {
                         // カラス（距離に応じて速度アップ）
-                        let crowSpeed = 3;
+                        let crowSpeed = 2.5; // 初期はやや遅め
+                        if (this.distance >= 3000) {
+                            crowSpeed = 3; // 3000m以降は基本速度
+                        }
                         if (this.distance >= 8000) {
                             crowSpeed = 4; // 8000m以降は速く
                         }
