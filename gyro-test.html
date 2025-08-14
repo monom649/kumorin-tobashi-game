@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>ジャイロセンサーテスト</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            background: #f0f0f0;
+            text-align: center;
+        }
+        
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .warning { background: #fff3cd; color: #856404; }
+        .info { background: #d1ecf1; color: #0c5460; }
+        
+        .values {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 10px;
+            margin: 20px 0;
+        }
+        
+        .value-box {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            border: 2px solid #dee2e6;
+        }
+        
+        .value-number {
+            font-size: 24px;
+            font-weight: bold;
+            color: #007bff;
+        }
+        
+        .test-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 5px;
+            font-size: 18px;
+            cursor: pointer;
+            margin: 10px;
+        }
+        
+        .test-button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+        
+        .log {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 10px;
+            border-radius: 5px;
+            text-align: left;
+            height: 200px;
+            overflow-y: auto;
+            margin: 20px 0;
+            font-family: monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔄 ジャイロセンサーテスト</h1>
+        
+        <div id="deviceInfo" class="status info">
+            デバイス情報を取得中...
+        </div>
+        
+        <div id="permissionStatus" class="status warning">
+            ジャイロセンサーの許可待ち...
+        </div>
+        
+        <button id="startTest" class="test-button">ジャイロセンサーテスト開始</button>
+        <button id="stopTest" class="test-button" disabled>テスト停止</button>
+        
+        <div class="values">
+            <div class="value-box">
+                <div>Alpha (Z軸)</div>
+                <div class="value-number" id="alphaValue">0</div>
+                <div>0°〜360°</div>
+            </div>
+            <div class="value-box">
+                <div>Beta (X軸)</div>
+                <div class="value-number" id="betaValue">0</div>
+                <div>-180°〜180°</div>
+            </div>
+            <div class="value-box">
+                <div>Gamma (Y軸)</div>
+                <div class="value-number" id="gammaValue">0</div>
+                <div>-90°〜90°</div>
+            </div>
+        </div>
+        
+        <div id="movementTest" class="status info" style="display: none;">
+            傾き判定: <span id="movementDirection">待機中</span>
+        </div>
+        
+        <div class="log" id="logOutput">
+            === ジャイロセンサーテストログ ===<br>
+        </div>
+    </div>
+
+    <script>
+        class GyroTest {
+            constructor() {
+                this.isActive = false;
+                this.logElement = document.getElementById('logOutput');
+                this.init();
+            }
+
+            init() {
+                this.log('テスト開始');
+                this.checkDeviceInfo();
+                this.setupEventListeners();
+            }
+
+            checkDeviceInfo() {
+                const userAgent = navigator.userAgent;
+                const isIOS = /iPad|iPhone|iPod/.test(userAgent);
+                const isAndroid = /Android/.test(userAgent);
+                const isSafari = /Safari/.test(userAgent) && !/Chrome/.test(userAgent);
+                const isChrome = /Chrome/.test(userAgent);
+                
+                let deviceInfo = '';
+                if (isIOS) deviceInfo += 'iOS デバイス ';
+                if (isAndroid) deviceInfo += 'Android デバイス ';
+                if (isSafari) deviceInfo += '(Safari)';
+                if (isChrome) deviceInfo += '(Chrome)';
+                
+                document.getElementById('deviceInfo').textContent = `デバイス: ${deviceInfo}`;
+                this.log(`デバイス検出: ${deviceInfo}`);
+                
+                // DeviceOrientationEvent の対応チェック
+                if (window.DeviceOrientationEvent) {
+                    this.log('✅ DeviceOrientationEvent対応');
+                    
+                    if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+                        this.log('✅ requestPermission関数が利用可能（iOS 13+）');
+                    } else {
+                        this.log('ℹ️ requestPermission関数なし（Android等）');
+                    }
+                } else {
+                    this.log('❌ DeviceOrientationEvent非対応');
+                    document.getElementById('permissionStatus').className = 'status error';
+                    document.getElementById('permissionStatus').textContent = 'このデバイスはジャイロセンサーに対応していません';
+                }
+            }
+
+            setupEventListeners() {
+                document.getElementById('startTest').addEventListener('click', () => {
+                    this.startTest();
+                });
+                
+                document.getElementById('stopTest').addEventListener('click', () => {
+                    this.stopTest();
+                });
+            }
+
+            async startTest() {
+                this.log('ジャイロセンサーテスト開始...');
+                
+                try {
+                    if (window.DeviceOrientationEvent) {
+                        
+                        if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+                            this.log('iOS 13+ - 許可を要求中...');
+                            document.getElementById('permissionStatus').textContent = '許可を要求中...';
+                            
+                            const permission = await DeviceOrientationEvent.requestPermission();
+                            this.log(`許可結果: ${permission}`);
+                            
+                            if (permission === 'granted') {
+                                this.log('✅ 許可取得成功');
+                                document.getElementById('permissionStatus').className = 'status success';
+                                document.getElementById('permissionStatus').textContent = 'ジャイロセンサー許可済み';
+                                this.activateGyro();
+                            } else {
+                                this.log('❌ 許可拒否');
+                                document.getElementById('permissionStatus').className = 'status error';
+                                document.getElementById('permissionStatus').textContent = 'ジャイロセンサー許可が拒否されました';
+                            }
+                        } else {
+                            this.log('Android等 - 直接ジャイロセンサーを有効化');
+                            document.getElementById('permissionStatus').className = 'status success';
+                            document.getElementById('permissionStatus').textContent = 'ジャイロセンサーアクセス中';
+                            this.activateGyro();
+                        }
+                    }
+                } catch (error) {
+                    this.log(`❌ エラー: ${error.message}`);
+                    document.getElementById('permissionStatus').className = 'status error';
+                    document.getElementById('permissionStatus').textContent = `エラー: ${error.message}`;
+                }
+            }
+
+            activateGyro() {
+                this.log('ジャイロセンサーイベントリスナー設定中...');
+                
+                window.addEventListener('deviceorientation', (event) => {
+                    this.handleOrientationChange(event);
+                });
+                
+                this.isActive = true;
+                document.getElementById('startTest').disabled = true;
+                document.getElementById('stopTest').disabled = false;
+                document.getElementById('movementTest').style.display = 'block';
+                
+                this.log('✅ ジャイロセンサーアクティブ');
+            }
+
+            handleOrientationChange(event) {
+                const alpha = Math.floor(event.alpha || 0);
+                const beta = Math.floor(event.beta || 0);
+                const gamma = Math.floor(event.gamma || 0);
+                
+                document.getElementById('alphaValue').textContent = alpha;
+                document.getElementById('betaValue').textContent = beta;
+                document.getElementById('gammaValue').textContent = gamma;
+                
+                // 移動判定テスト
+                let direction = '待機中';
+                
+                // 仕様書通りのAlpha値判定
+                if (alpha > 40 && alpha < 60) {
+                    direction = '← 左移動 (Alpha)';
+                } else if (alpha > 300 && alpha < 320) {
+                    direction = '→ 右移動 (Alpha)';
+                }
+                
+                // Gamma値判定
+                if (gamma < -20) {
+                    direction = '← 左移動 (Gamma)';
+                } else if (gamma > 20) {
+                    direction = '→ 右移動 (Gamma)';
+                }
+                
+                document.getElementById('movementDirection').textContent = direction;
+                
+                // 最初の数秒はログ出力
+                if (this.isActive) {
+                    this.log(`A:${alpha} B:${beta} G:${gamma} → ${direction}`);
+                }
+            }
+
+            stopTest() {
+                this.log('テスト停止');
+                this.isActive = false;
+                
+                document.getElementById('startTest').disabled = false;
+                document.getElementById('stopTest').disabled = true;
+                document.getElementById('movementTest').style.display = 'none';
+                
+                // イベントリスナーは残しておく（ページ全体をリロードしないと完全に停止できない）
+            }
+
+            log(message) {
+                const timestamp = new Date().toLocaleTimeString();
+                this.logElement.innerHTML += `[${timestamp}] ${message}<br>`;
+                this.logElement.scrollTop = this.logElement.scrollHeight;
+                console.log(`[GyroTest] ${message}`);
+            }
+        }
+
+        // テスト開始
+        window.addEventListener('load', () => {
+            new GyroTest();
+        });
+    </script>
+</body>
+</html>
