@@ -822,26 +822,26 @@
                     });
                 }
                 
-                // 渡り鳥のみの生成（カラス完全削除に伴い頻度調整）
+                // 渡り鳥のみの生成（1体ずつなので頻度を大幅上昇）
                 const distanceCheck = Math.floor(this.distance / 100);
                 
-                // 渡り鳥のみなので頻度を上げて適切な難易度を維持
-                let obstacleChance = 0.015; // 基本1.5%
+                // 1体ずつなので頻度を大幅に上げて適切な難易度を維持
+                let obstacleChance = 0.025; // 基本2.5%
                 
                 if (this.distance >= 1000) {
-                    obstacleChance = 0.020; // 1000m以降: 2.0%
+                    obstacleChance = 0.035; // 1000m以降: 3.5%
                 }
                 if (this.distance >= 3000) {
-                    obstacleChance = 0.025; // 3000m以降: 2.5%
+                    obstacleChance = 0.045; // 3000m以降: 4.5%
                 }
                 if (this.distance >= 5000) {
-                    obstacleChance = 0.030; // 5000m以降: 3.0%
+                    obstacleChance = 0.055; // 5000m以降: 5.5%
                 }
                 if (this.distance >= 8000) {
-                    obstacleChance = 0.035; // 8000m以降: 3.5%
+                    obstacleChance = 0.065; // 8000m以降: 6.5%
                 }
                 if (this.distance >= 12000) {
-                    obstacleChance = 0.040; // 12000m以降: 4.0%
+                    obstacleChance = 0.075; // 12000m以降: 7.5%
                 }
                 
                 // デバッグログ（低頻度）
@@ -851,43 +851,29 @@
                 
                 if (Math.random() < obstacleChance) {
                     // 渡り鳥のみを生成（カラスは完全削除）
-                    // 渡り鳥（距離に応じて数を増やす）
+                    // 渡り鳥（1体ずつ飛行）
                     const direction = Math.random() < 0.5 ? 'left' : 'right';
-                    const startX = direction === 'left' ? -600 : 1080;
+                    const startX = direction === 'left' ? -200 : 1080;
                     const y = Math.random() * (1920 - 400) + 200; // 画面全体に出現（上下200pxマージン）
                     
-                    // 距離に応じて鳥の数を増やす
-                    let birdCount = 2; // 初期は2匹
-                    if (this.distance >= 3000) {
-                        birdCount = 3; // 3000m以降は3匹
+                    // 鳥の速度を距離に応じて調整
+                    let birdSpeed = 8; // 基本速度
+                    if (this.distance >= 5000) {
+                        birdSpeed = 10; // 5000m以降は速く
                     }
-                    if (this.distance >= 8000) {
-                        birdCount = Math.random() < 0.3 ? 4 : 3; // 30%の確猇4匹
-                    }
-                    if (this.distance >= 12000) {
-                        birdCount = Math.random() < 0.5 ? 4 : 3; // 50%の確猇4匹
+                    if (this.distance >= 10000) {
+                        birdSpeed = 12; // 10000m以降はさらに速く
                     }
                     
-                    for (let i = 0; i < birdCount; i++) {
-                        let birdX;
-                        if (direction === 'left') {
-                            // 左から右へ移動: 先頭が一番左に
-                            birdX = startX + (i * 250);
-                        } else {
-                            // 右から左へ移動: 先頭が一番右に
-                            birdX = startX - (i * 250);
-                        }
-                        
-                        this.obstacles.push({
-                            x: birdX,
-                            y: y,
-                            width: 200,
-                            height: 200,
-                            type: 'bird',
-                            direction: direction,
-                            speed: 11 * this.speedMultiplier
-                        });
-                    }
+                    this.obstacles.push({
+                        x: startX,
+                        y: y,
+                        width: 200,
+                        height: 200,
+                        type: 'bird',
+                        direction: direction,
+                        speed: birdSpeed * this.speedMultiplier
+                    });
                 }
                 
                 // バナナ生成（距離に応じて確率調整）
@@ -1039,22 +1025,22 @@
                         const drawWidth = 200;
                         const drawHeight = 200;
                         
-                        // 渡り鳥の方向に応じて画像を調整（反転問題修正）
+                        // 渡り鳥の方向に応じて画像を調整（元画像の向きを考慮）
                         this.ctx.save();
                         
                         if (obstacle.direction === 'left') {
-                            // 左から右へ移動: 通常描画（鳥が右を向いている）
-                            this.ctx.drawImage(
-                                this.assets.bird,
-                                obstacle.x, obstacle.y,
-                                drawWidth, drawHeight
-                            );
-                        } else {
-                            // 右から左へ移動: 画像を反転（鳥が左を向く）
+                            // 左から右へ移動: 元画像が左向きなら反転が必要
                             this.ctx.scale(-1, 1);
                             this.ctx.drawImage(
                                 this.assets.bird,
                                 -(obstacle.x + drawWidth), obstacle.y,
+                                drawWidth, drawHeight
+                            );
+                        } else {
+                            // 右から左へ移動: 元画像が左向きなら通常描画
+                            this.ctx.drawImage(
+                                this.assets.bird,
+                                obstacle.x, obstacle.y,
                                 drawWidth, drawHeight
                             );
                         }
