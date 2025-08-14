@@ -139,6 +139,19 @@
             display: block;
         }
 
+        /* ゲーム中のくもりんGIF */
+        #kumorinPlayer {
+            position: absolute;
+            width: 300px;
+            height: 300px;
+            background-image: url('https://i.imgur.com/0hQMgso.gif');
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            pointer-events: none;
+            z-index: 5;
+        }
+
         /* UI要素 */
         #gameUI {
             position: absolute;
@@ -275,6 +288,7 @@
         <!-- ゲーム画面 -->
         <div id="gameScreen">
             <canvas id="gameCanvas"></canvas>
+            <div id="kumorinPlayer"></div>
             <div id="gameUI">
                 <div id="distanceDisplay">0m</div>
                 <div id="bananaCounter"></div>
@@ -320,7 +334,8 @@
                     y: 0,
                     width: 300,
                     height: 300,
-                    img: new Image()
+                    img: new Image(),
+                    element: document.getElementById('kumorinPlayer')
                 };
                 
                 // 障害物配列
@@ -601,7 +616,8 @@
                 
                 // プレイヤー初期位置
                 this.player.x = 540 - this.player.width / 2; // 1080 / 2 - 300 / 2 = 390
-                this.player.y = 1920 - this.player.height - 100; // 1920 - 300 - 100 = 1520
+                this.player.y = 1920 - this.player.height - 300; // 1920 - 300 - 300 = 1320（もう少し上に）
+                this.updatePlayerPosition();
                 
                 // 配列クリア
                 this.obstacles = [];
@@ -704,6 +720,16 @@
                 if (this.player.x > 1080 - this.player.width - 50) {
                     this.player.x = 1080 - this.player.width - 50; // 1080 - 300 - 50 = 730
                 }
+                
+                // HTML要素の位置更新
+                this.updatePlayerPosition();
+            }
+
+            updatePlayerPosition() {
+                if (this.player.element) {
+                    this.player.element.style.left = this.player.x + 'px';
+                    this.player.element.style.top = this.player.y + 'px';
+                }
             }
 
             spawnObjects() {
@@ -725,25 +751,25 @@
                     if (Math.random() < 0.5) {
                         // カラス
                         this.obstacles.push({
-                            x: Math.random() * (1080 - 300), // 1080 - 300 = 780
-                            y: -300,
-                            width: 300,
-                            height: 300,
+                            x: Math.random() * (1080 - 200), // 1080 - 200 = 880
+                            y: -200,
+                            width: 200,
+                            height: 200,
                             type: 'crow',
                             speed: 3 * this.speedMultiplier
                         });
                     } else {
                         // 渡り鳥（3匹1列）
                         const direction = Math.random() < 0.5 ? 'left' : 'right';
-                        const startX = direction === 'left' ? -900 : 1080;
+                        const startX = direction === 'left' ? -600 : 1080;
                         const y = Math.random() * (1920 / 2); // 1920 / 2 = 960
                         
                         for (let i = 0; i < 3; i++) {
                             this.obstacles.push({
-                                x: startX + (i * 350),
+                                x: startX + (i * 250), // 間隔も調整
                                 y: y,
-                                width: 300,
-                                height: 300,
+                                width: 200,
+                                height: 200,
                                 type: 'bird',
                                 direction: direction,
                                 speed: 11 * this.speedMultiplier
@@ -775,14 +801,14 @@
                 this.obstacles = this.obstacles.filter(obstacle => {
                     if (obstacle.type === 'crow') {
                         obstacle.y += obstacle.speed;
-                        return obstacle.y < 1920 + 300; // 1920 + 300 = 2220
+                        return obstacle.y < 1920 + 200; // 1920 + 200 = 2120
                     } else if (obstacle.type === 'bird') {
                         if (obstacle.direction === 'left') {
                             obstacle.x += obstacle.speed;
-                            return obstacle.x < 1080 + 300; // 1080 + 300 = 1380
+                            return obstacle.x < 1080 + 200; // 1080 + 200 = 1280
                         } else {
                             obstacle.x -= obstacle.speed;
-                            return obstacle.x > -300;
+                            return obstacle.x > -200;
                         }
                     }
                     return true;
@@ -815,10 +841,14 @@
             }
 
             isColliding(obj1, obj2) {
-                return obj1.x < obj2.x + obj2.width &&
-                       obj1.x + obj1.width > obj2.x &&
-                       obj1.y < obj2.y + obj2.height &&
-                       obj1.y + obj1.height > obj2.y;
+                // 当たり判定を小さくする（画像の70%程度）
+                const margin1 = 40; // obj1（プレイヤー）のマージン
+                const margin2 = 30; // obj2（障害物）のマージン
+                
+                return (obj1.x + margin1) < (obj2.x + obj2.width - margin2) &&
+                       (obj1.x + obj1.width - margin1) > (obj2.x + margin2) &&
+                       (obj1.y + margin1) < (obj2.y + obj2.height - margin2) &&
+                       (obj1.y + obj1.height - margin1) > (obj2.y + margin2);
             }
 
             collectBanana() {
@@ -864,26 +894,24 @@
                     this.ctx.globalAlpha = 1.0;
                 });
                 
-                // プレイヤー描画
-                this.ctx.drawImage(
-                    this.player.img,
-                    this.player.x, this.player.y,
-                    this.player.width, this.player.height
-                );
+                // プレイヤー描画はHTML要素で行うため、ここでは描画しない
                 
-                // 障害物描画
+                // 障害物描画（サイズを小さく、アスペクト比を正方形に）
                 this.obstacles.forEach(obstacle => {
+                    const drawWidth = 200;  // 300から200に縮小
+                    const drawHeight = 200; // 正方形に保つ
+                    
                     if (obstacle.type === 'crow') {
                         this.ctx.drawImage(
                             this.assets.crow,
                             obstacle.x, obstacle.y,
-                            obstacle.width, obstacle.height
+                            drawWidth, drawHeight
                         );
                     } else if (obstacle.type === 'bird') {
                         this.ctx.drawImage(
                             this.assets.bird,
                             obstacle.x, obstacle.y,
-                            obstacle.width, obstacle.height
+                            drawWidth, drawHeight
                         );
                     }
                 });
