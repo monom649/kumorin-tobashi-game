@@ -185,6 +185,12 @@
             async startTest() {
                 this.log('ジャイロセンサーテスト開始...');
                 
+                // iOS 26 Beta 特別対応
+                this.log(`User Agent: ${navigator.userAgent}`);
+                this.log(`Location Protocol: ${location.protocol}`);
+                this.log(`DeviceOrientationEvent: ${typeof DeviceOrientationEvent}`);
+                this.log(`requestPermission: ${typeof DeviceOrientationEvent.requestPermission}`);
+                
                 try {
                     if (window.DeviceOrientationEvent) {
                         
@@ -192,8 +198,26 @@
                             this.log('iOS 13+ - 許可を要求中...');
                             document.getElementById('permissionStatus').textContent = '許可を要求中...';
                             
-                            const permission = await DeviceOrientationEvent.requestPermission();
-                            this.log(`許可結果: ${permission}`);
+                            // iOS 26 Beta では複数回試行が必要な場合がある
+                            let permission;
+                            for (let attempt = 1; attempt <= 3; attempt++) {
+                                this.log(`許可要求 試行 ${attempt}/3`);
+                                
+                                try {
+                                    permission = await DeviceOrientationEvent.requestPermission();
+                                    this.log(`試行 ${attempt} 結果: ${permission}`);
+                                    
+                                    if (permission === 'granted') {
+                                        break;
+                                    }
+                                } catch (attemptError) {
+                                    this.log(`試行 ${attempt} エラー: ${attemptError.message}`);
+                                    if (attempt === 3) throw attemptError;
+                                    
+                                    // 1秒待機して再試行
+                                    await new Promise(resolve => setTimeout(resolve, 1000));
+                                }
+                            }
                             
                             if (permission === 'granted') {
                                 this.log('✅ 許可取得成功');
@@ -201,9 +225,13 @@
                                 document.getElementById('permissionStatus').textContent = 'ジャイロセンサー許可済み';
                                 this.activateGyro();
                             } else {
-                                this.log('❌ 許可拒否');
+                                this.log('❌ 許可拒否または取得失敗');
                                 document.getElementById('permissionStatus').className = 'status error';
-                                document.getElementById('permissionStatus').textContent = 'ジャイロセンサー許可が拒否されました';
+                                document.getElementById('permissionStatus').textContent = `許可状態: ${permission}`;
+                                
+                                // 強制的にジャイロを試行
+                                this.log('強制的にジャイロセンサーを試行...');
+                                this.activateGyro();
                             }
                         } else {
                             this.log('Android等 - 直接ジャイロセンサーを有効化');
@@ -211,27 +239,88 @@
                             document.getElementById('permissionStatus').textContent = 'ジャイロセンサーアクセス中';
                             this.activateGyro();
                         }
+                    } else {
+                        this.log('❌ DeviceOrientationEvent未対応');
+                        document.getElementById('permissionStatus').className = 'status error';
+                        document.getElementById('permissionStatus').textContent = 'DeviceOrientationEvent未対応';
                     }
                 } catch (error) {
-                    this.log(`❌ エラー: ${error.message}`);
+                    this.log(`❌ 致命的エラー: ${error.message}`);
+                    this.log(`エラースタック: ${error.stack}`);
                     document.getElementById('permissionStatus').className = 'status error';
                     document.getElementById('permissionStatus').textContent = `エラー: ${error.message}`;
+                    
+                    // エラーでも強制試行
+                    this.log('エラー発生でも強制的にジャイロセンサーを試行...');
+                    this.activateGyro();
                 }
             }
 
             activateGyro() {
                 this.log('ジャイロセンサーイベントリスナー設定中...');
                 
-                window.addEventListener('deviceorientation', (event) => {
+                let orientationWorking = false;
+                let motionWorking = false;
+                
+                // DeviceOrientationEvent を試行
+                const orientationHandler = (event) => {
+                    if (!orientationWorking && (event.alpha !== null || event.beta !== null || event.gamma !== null)) {
+                        orientationWorking = true;
+                        this.log('✅ DeviceOrientationEvent が動作中');
+                    }
                     this.handleOrientationChange(event);
-                });
+                };
+                
+                window.addEventListener('deviceorientation', orientationHandler);
+                
+                // DeviceMotionEvent も試行（iOS 26 Beta の代替）
+                const motionHandler = (event) => {
+                    if (!motionWorking && event.rotationRate) {
+                        motionWorking = true;
+                        this.log('✅ DeviceMotionEvent が動作中（代替）');
+                    }
+                    this.handleMotionChange(event);
+                };
+                
+                if (window.DeviceMotionEvent) {
+                    this.log('DeviceMotionEvent も並行して試行...');
+                    window.addEventListener('devicemotion', motionHandler);
+                }
+                
+                // 5秒後に動作確認
+                setTimeout(() => {
+                    if (!orientationWorking && !motionWorking) {
+                        this.log('⚠️ 警告: 5秒経過してもジャイロデータを取得できません');
+                        this.log('設定 > Safari > モーションとオリエンテーションのアクセスを確認してください');
+                    } else {
+                        this.log(`動作状況: Orientation=${orientationWorking}, Motion=${motionWorking}`);
+                    }
+                }, 5000);
                 
                 this.isActive = true;
                 document.getElementById('startTest').disabled = true;
                 document.getElementById('stopTest').disabled = false;
                 document.getElementById('movementTest').style.display = 'block';
                 
-                this.log('✅ ジャイロセンサーアクティブ');
+                this.log('✅ ジャイロセンサーアクティベート完了');
+            }
+
+            handleMotionChange(event) {
+                if (event.rotationRate) {
+                    // DeviceMotionEvent からの回転データを DeviceOrientation 形式に変換
+                    const alpha = event.rotationRate.alpha ? Math.floor(event.rotationRate.alpha * 10) : 0;
+                    const beta = event.rotationRate.beta ? Math.floor(event.rotationRate.beta * 10) : 0;
+                    const gamma = event.rotationRate.gamma ? Math.floor(event.rotationRate.gamma * 10) : 0;
+                    
+                    // 値が取得できていればOrientationChangeと同じ処理
+                    if (alpha !== 0 || beta !== 0 || gamma !== 0) {
+                        this.handleOrientationChange({
+                            alpha: alpha,
+                            beta: beta,
+                            gamma: gamma
+                        });
+                    }
+                }
             }
 
             handleOrientationChange(event) {
