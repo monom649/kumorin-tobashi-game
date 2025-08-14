@@ -822,28 +822,47 @@
                     });
                 }
                 
-                // 障害物生成（50mごとに判定）
+                // 障害物生成（距離に応じた難易度上昇）
                 const distanceCheck = Math.floor(this.distance / 50);
-                const baseChance = Math.min(0.6, 0.5 + (distanceCheck * 0.05));
+                // 基本確率: 2%から始まり、5000mで最大6%、その後は6%で固定
+                let obstacleChance = Math.min(0.06, 0.02 + (distanceCheck * 0.0008));
                 
-                if (Math.random() < baseChance / 100) {
-                    if (Math.random() < 0.5) {
-                        // カラス
-                        this.obstacles.push({
-                            x: Math.random() * (1080 - 200), // 1080 - 200 = 880
-                            y: -200,
-                            width: 200,
-                            height: 200,
-                            type: 'crow',
-                            speed: 3 * this.speedMultiplier
-                        });
-                    } else {
-                        // 渡り鳥（3匹1列）
+                // 10000m以降はさらに難易度アップ
+                if (this.distance >= 10000) {
+                    obstacleChance = Math.min(0.08, obstacleChance + 0.02);
+                }
+                
+                // デバッグログ（低頻度）
+                if (this.debugMode && Math.random() < 0.001) {
+                    console.log(`距離: ${Math.floor(this.distance)}m, 障害物確率: ${(obstacleChance * 100).toFixed(2)}%`);
+                }
+                
+                if (Math.random() < obstacleChance) {
+                    // 距離に応じて渡り鳥の出現率を上げる
+                    let birdProbability = 0.5; // 基本50%
+                    if (this.distance >= 5000) {
+                        birdProbability = 0.6; // 5000m以降は60%
+                    }
+                    if (this.distance >= 10000) {
+                        birdProbability = 0.7; // 10000m以降は70%
+                    }
+                    
+                    if (Math.random() < birdProbability) {
+                        // 渡り鳥（距離に応じて数を増やす）
                         const direction = Math.random() < 0.5 ? 'left' : 'right';
                         const startX = direction === 'left' ? -600 : 1080;
                         const y = Math.random() * (1920 / 2); // 1920 / 2 = 960
                         
-                        for (let i = 0; i < 3; i++) {
+                        // 距離に応じて鳥の数を増やす
+                        let birdCount = 3; // 基本3匹
+                        if (this.distance >= 8000) {
+                            birdCount = Math.random() < 0.3 ? 4 : 3; // 30%の確猇4匹
+                        }
+                        if (this.distance >= 12000) {
+                            birdCount = Math.random() < 0.5 ? 4 : 3; // 50%の確猇4匹
+                        }
+                        
+                        for (let i = 0; i < birdCount; i++) {
                             this.obstacles.push({
                                 x: startX + (i * 250), // 間隔も調整
                                 y: y,
@@ -854,11 +873,34 @@
                                 speed: 11 * this.speedMultiplier
                             });
                         }
+                    } else {
+                        // カラス（距離に応じて速度アップ）
+                        let crowSpeed = 3;
+                        if (this.distance >= 8000) {
+                            crowSpeed = 4; // 8000m以降は速く
+                        }
+                        if (this.distance >= 12000) {
+                            crowSpeed = 5; // 12000m以降はさらに速く
+                        }
+                        
+                        this.obstacles.push({
+                            x: Math.random() * (1080 - 200), // 1080 - 200 = 880
+                            y: -200,
+                            width: 200,
+                            height: 200,
+                            type: 'crow',
+                            speed: crowSpeed * this.speedMultiplier
+                        });
                     }
                 }
                 
-                // バナナ生成（100mごとに40%の確率）
-                if (Math.floor(this.distance) % 100 === 0 && Math.random() < 0.4) {
+                // バナナ生成（距離に応じて確率調整）
+                let bananaChance = 0.4; // 基本40%
+                if (this.distance >= 10000) {
+                    bananaChance = 0.3; // 高難易度ではバナナを少なく
+                }
+                
+                if (Math.floor(this.distance) % 100 === 0 && Math.random() < bananaChance) {
                     this.bananas.push({
                         x: Math.random() * (1080 - 300), // 1080 - 300 = 780
                         y: -300,
