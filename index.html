@@ -179,7 +179,21 @@
             top: 50px;
             right: 50px;
             display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 5px;
+        }
+
+        #bananaIcons {
+            display: flex;
             gap: 10px;
+        }
+
+        #speedMultiplier {
+            color: #ff6b00;
+            font-weight: bold;
+            font-size: 18px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.7);
         }
 
         #debugInfo {
@@ -291,13 +305,18 @@
             <div id="kumorinPlayer"></div>
             <div id="gameUI">
                 <div id="distanceDisplay">0m</div>
-                <div id="bananaCounter"></div>
+                <div id="bananaCounter">
+                    <div id="speedMultiplier">×1.0</div>
+                    <div id="bananaIcons"></div>
+                </div>
                 <div id="debugInfo">
                     <div>ジャイロ: <span id="gyroStatus">未取得</span></div>
                     <div>Alpha: <span id="alphaValue">0</span>°</div>
                     <div>Beta: <span id="betaValue">0</span>°</div>
                     <div>Gamma: <span id="gammaValue">0</span>°</div>
                     <div>操作: <span id="controlStatus">待機中</span></div>
+                    <div>スピード: <span id="speedStatus">×1.0</span></div>
+                    <div>バナナ: <span id="bananaStatus">0個</span></div>
                 </div>
             </div>
         </div>
@@ -632,9 +651,9 @@
                 this.bananaCount = 0;
                 this.speedMultiplier = 1.0;
                 
-                // プレイヤー初期位置
+                // プレイヤー初期位置（画面中央）
                 this.player.x = 540 - this.player.width / 2; // 1080 / 2 - 300 / 2 = 390
-                this.player.y = 1920 - this.player.height - 300; // 1920 - 300 - 300 = 1320（もう少し上に）
+                this.player.y = 960 - this.player.height / 2; // 1920 / 2 - 300 / 2 = 810（画面中央）
                 this.updatePlayerPosition();
                 
                 // 配列クリア
@@ -682,7 +701,13 @@
             }
 
             updatePlayerMovement() {
-                const moveSpeed = 8;
+                const baseSpeed = 15; // 8から15に増加
+                const moveSpeed = baseSpeed * this.speedMultiplier; // スピードアップ適用
+                
+                // デバッグ: スピード情報をコンソールに表示
+                if (this.debugMode && Math.random() < 0.01) { // 1%の確率で表示（頻度制御）
+                    console.log(`現在速度: baseSpeed=${baseSpeed}, multiplier=${this.speedMultiplier}, moveSpeed=${moveSpeed}`);
+                }
                 let shouldMoveLeft = false;
                 let shouldMoveRight = false;
                 let shouldMoveUp = false;
@@ -740,17 +765,27 @@
                 }
                 
                 // 移動実行
+                let didMove = false;
                 if (shouldMoveLeft) {
                     this.player.x -= moveSpeed;
+                    didMove = true;
                 }
                 if (shouldMoveRight) {
                     this.player.x += moveSpeed;
+                    didMove = true;
                 }
                 if (shouldMoveUp) {
                     this.player.y -= moveSpeed;
+                    didMove = true;
                 }
                 if (shouldMoveDown) {
                     this.player.y += moveSpeed;
+                    didMove = true;
+                }
+                
+                // デバッグ: 移動時のみスピード情報表示（頻度制御）
+                if (didMove && this.debugMode && Math.random() < 0.005) {
+                    console.log(`移動速度: ${moveSpeed} (ベース:${15} × 倍率:${this.speedMultiplier})`);
                 }
                 
                 // 画面内制限（左右）
@@ -898,22 +933,45 @@
             collectBanana() {
                 this.bananaCount = Math.min(5, this.bananaCount + 1);
                 
-                // スピードアップ段階
-                const speedLevels = [1.0, 1.6, 2.2, 2.8, 3.0];
+                // スピードアップ段階（0個:1.0倍, 1個:1.4倍, 2個:1.8倍, 3個:2.2倍, 4個:2.6倍, 5個:3.0倍）
+                const speedLevels = [1.0, 1.4, 1.8, 2.2, 2.6, 3.0];
                 this.speedMultiplier = speedLevels[this.bananaCount];
+                
+                console.log(`🍌 バナナ取得! カウント: ${this.bananaCount}/5, スピード倍率: ×${this.speedMultiplier}`);
+                console.log(`⬆️ スピードアップ! 現在の移動速度: ${15 * this.speedMultiplier} (ベース:15 × ${this.speedMultiplier})`);
                 
                 // バナナ取得音
                 this.playAudio('item');
+                
+                // スピードアップの視覚的フィードバック
+                this.showSpeedUpEffect();
             }
 
             updateBananaCounter() {
-                const counter = document.getElementById('bananaCounter');
-                counter.innerHTML = '';
+                // スピード倍率表示更新
+                const speedDisplay = document.getElementById('speedMultiplier');
+                if (speedDisplay) {
+                    speedDisplay.textContent = `×${this.speedMultiplier.toFixed(1)}`;
+                }
                 
-                for (let i = 0; i < this.bananaCount; i++) {
-                    const icon = document.createElement('div');
-                    icon.className = 'banana-icon';
-                    counter.appendChild(icon);
+                // バナナアイコン更新
+                const iconsContainer = document.getElementById('bananaIcons');
+                if (iconsContainer) {
+                    iconsContainer.innerHTML = '';
+                    
+                    for (let i = 0; i < this.bananaCount; i++) {
+                        const icon = document.createElement('div');
+                        icon.className = 'banana-icon';
+                        iconsContainer.appendChild(icon);
+                    }
+                }
+                
+                // デバッグ表示更新
+                if (this.debugMode) {
+                    const speedStatus = document.getElementById('speedStatus');
+                    const bananaStatus = document.getElementById('bananaStatus');
+                    if (speedStatus) speedStatus.textContent = `×${this.speedMultiplier.toFixed(1)}`;
+                    if (bananaStatus) bananaStatus.textContent = `${this.bananaCount}個`;
                 }
             }
 
@@ -995,6 +1053,22 @@
                 document.getElementById('gameOverScreen').style.display = 'none';
                 document.getElementById('titleScreen').style.display = 'flex';
                 this.gameState = 'title';
+            }
+            
+            showSpeedUpEffect() {
+                // スピードアップエフェクトでスピード倍率表示を一時的に大きくする
+                const speedDisplay = document.getElementById('speedMultiplier');
+                if (speedDisplay) {
+                    speedDisplay.style.fontSize = '28px';
+                    speedDisplay.style.color = '#ff0000';
+                    speedDisplay.style.textShadow = '0 0 10px #ffff00';
+                    
+                    setTimeout(() => {
+                        speedDisplay.style.fontSize = '18px';
+                        speedDisplay.style.color = '#ff6b00';
+                        speedDisplay.style.textShadow = '2px 2px 4px rgba(0,0,0,0.7)';
+                    }, 1000);
+                }
             }
 
             enterTestMode() {
